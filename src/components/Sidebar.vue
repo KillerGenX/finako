@@ -60,11 +60,11 @@ async function handleLogout() {
 
     <ul class="menu text-base-content flex-grow">
       <li class="menu-title"><span>Menu Utama</span></li>
-      <li>
-        <RouterLink to="/">
-          <HomeIcon class="h-5 w-5" /> Dasbor
-        </RouterLink>
-      </li>
+      <li v-if="userStore.userRole === 'owner'">
+  <RouterLink to="/">
+    <HomeIcon class="h-5 w-5" /> Dasbor
+  </RouterLink>
+</li>
       <li>
         <RouterLink to="/penjualan">
           <CurrencyDollarIcon class="h-5 w-5" /> Transaksi Penjualan

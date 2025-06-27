@@ -45,6 +45,12 @@ async function handleLogin() {
 
     // Setelah semua data siap di store, baru arahkan pengguna ke halaman utama.
     router.push("/");
+    // Setelah semua data siap di store, baru arahkan pengguna sesuai role
+if (userStore.userRole === 'pegawai') {
+  router.push("/penjualan");
+} else {
+  router.push("/");
+}
 
   } catch (error) {
     // Jika terjadi error, tampilkan pesannya ke pengguna

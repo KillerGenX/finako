@@ -1,153 +1,153 @@
-<!-- File: src/views/ProductsView.vue (VERSI SCRIPT FINAL) -->
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { supabase } from '@/supabase'
 import { useUserStore } from '@/stores/userStore'
-import { TrashIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 
 const userStore = useUserStore()
-const loading = ref(false)
-const message = ref('')
-const products = ref([])
-const newProduct = ref({ name: '', price: 0, cost: 0 })
-const isEditModalOpen = ref(false)
-const editingProduct = ref(null)
 
-async function getProducts() {
-  if (!userStore.organization?.id) return;
-  loading.value = true;
-  try {
+const namaProduk = ref('')
+const hargaJual = ref(0)
+const hargaModal = ref(0)
+const selectedFile = ref(null)
+const fileInput = ref(null)
+
+const produkList = ref([])
+
+async function fetchProduk() {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Gagal ambil produk:', error.message)
+  } else {
+    produkList.value = data
+  }
+}
+
+function onFileChange(event) {
+  selectedFile.value = event.target.files[0]
+}
+
+async function simpanProduk() {
+  let fotoUrl = null
+
+  if (selectedFile.value) {
+    const fileName = `${Date.now()}_${selectedFile.value.name}`
     const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('organization_id', userStore.organization.id)
-      .order('name');
-    if (error) throw error;
-    products.value = data;
-  } catch (error) { message.value = `Error: ${error.message}`; } 
-  finally { loading.value = false; }
-}
+      .storage
+      .from('product-images')
+      .upload(fileName, selectedFile.value)
 
-// Ganti fungsi addProduct Anda dengan ini
-async function addProduct() {
-  // --- PAGAR PENGAMAN BARU ---
-  // Cek dulu apakah data organisasi sudah siap di store sebelum melanjutkan
-  if (!userStore.organization?.id) {
-    message.value = "Data organisasi tidak ditemukan. Coba refresh halaman.";
-    return; // Hentikan fungsi jika data belum siap
-  }
-  // --- AKHIR PAGAR PENGAMAN ---
+    if (error) {
+      alert('Gagal upload gambar: ' + error.message)
+      return
+    }
 
-  if (!newProduct.value.name || newProduct.value.price <= 0) { 
-    message.value = 'Nama & harga harus diisi.'; 
-    return; 
+    fotoUrl = supabase.storage
+      .from('product-images')
+      .getPublicUrl(fileName).data.publicUrl
   }
 
-  loading.value = true;
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from('products').insert([{
-      name: newProduct.value.name,
-      price: newProduct.value.price,
-      cost: newProduct.value.cost,
-      user_id: user.id,
-      organization_id: userStore.organization.id // <-- Baris ini sekarang aman
-    }]);
-    if (error) throw error;
-    message.value = 'Produk berhasil ditambahkan.';
-    newProduct.value = { name: '', price: 0, cost: 0 };
-    await getProducts();
-  } catch (error) { 
-    message.value = `Error: ${error.message}`; 
-  } finally { 
-    loading.value = false; 
+  const { error } = await supabase.from('products').insert({
+    name: namaProduk.value,
+    price: hargaJual.value,
+    cost: hargaModal.value,
+    foto_url: fotoUrl,
+    organization_id: userStore.organization.id,
+    user_id: userStore.session.user.id,
+  })
+
+  if (error) {
+    alert('Gagal simpan produk: ' + error.message)
+  } else {
+    alert('Produk berhasil ditambahkan!')
+    namaProduk.value = ''
+    hargaJual.value = 0
+    hargaModal.value = 0
+    selectedFile.value = null
+    fileInput.value.value = '' // reset input file ke kosong
+    fetchProduk()
   }
 }
 
-function openEditModal(product) {
-  editingProduct.value = { ...product };
-  isEditModalOpen.value = true;
-}
+async function hapusProduk(id) {
+  if (confirm('Yakin ingin menghapus produk ini?')) {
+    const { error } = await supabase.from('products').delete().eq('id', id)
 
-async function handleUpdateProduct() {
-  if (!editingProduct.value.name) return;
-  loading.value = true;
-  try {
-    const { id, name, price, cost } = editingProduct.value;
-    const { error } = await supabase.from('products').update({ name, price, cost }).eq('id', id);
-    if (error) throw error;
-    message.value = 'Produk berhasil diperbarui.';
-    isEditModalOpen.value = false;
-    await getProducts();
-  } catch (error) {
-    message.value = `Error: ${error.message}`;
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function deleteProduct(productId, productName) {
-  if (confirm(`Yakin ingin menghapus produk '${productName}'?`)) {
-    loading.value = true;
-    try {
-      const { error } = await supabase.from('products').delete().eq('id', productId);
-      if (error) throw error;
-      message.value = 'Produk berhasil dihapus.';
-      await getProducts();
-    } catch (error) {
-      message.value = `Error: ${error.message}`;
-    } finally {
-      loading.value = false;
+    if (error) {
+      alert('Gagal hapus produk: ' + error.message)
+    } else {
+      alert('Produk berhasil dihapus!')
+      fetchProduk() // Refresh daftar produk
     }
   }
 }
 
+
 onMounted(() => {
-  if (userStore.isReady) {
-    getProducts();
-  } else {
-    const unwatch = watch(() => userStore.isReady, (newValue) => {
-      if (newValue) {
-        getProducts();
-        unwatch();
-      }
-    });
-  }
-});
+  fetchProduk()
+})
+
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h2 class="card-title">Tambah Produk/Menu Baru</h2>
-        <form @submit.prevent="addProduct" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <div class="form-control md:col-span-2">
-            <label class="label"><span class="label-text">Nama Produk</span></label>
-            <input type="text" v-model="newProduct.name" placeholder="Kopi Susu Gula Aren" class="input input-bordered" required />
-          </div>
-          <div class="form-control">
-            <label class="label"><span class="label-text">Harga Jual (Rp)</span></label>
-            <input type="number" v-model.number="newProduct.price" placeholder="25000" class="input input-bordered" required />
-          </div>
-           <div class="form-control">
-            <label class="label"><span class="label-text">Harga Modal (Rp)</span></label>
-            <input type="number" v-model.number="newProduct.cost" placeholder="10000" class="input input-bordered" required />
-          </div>
-          <div class="card-actions">
-            <button type="submit" :disabled="loading" class="btn btn-primary w-full">
-              {{ loading ? '...' : 'Tambah' }}
-            </button>
-          </div>
-        </form>
+ <div class="p-4 space-y-8">
+
+<!-- Form Tambah Produk -->
+<div class="card bg-base-100 shadow p-4">
+  <h2 class="text-xl font-bold mb-4">Tambah Produk Baru</h2>
+
+  <div class="form-control mb-2">
+    <label class="label">Nama Produk</label>
+    <input v-model="namaProduk" type="text" class="input input-bordered" />
+  </div>
+
+  <div class="form-control mb-2">
+    <label class="label">Harga Jual</label>
+    <input v-model="hargaJual" type="number" class="input input-bordered" />
+  </div>
+
+  <div class="form-control mb-2">
+    <label class="label">Harga Modal</label>
+    <input v-model="hargaModal" type="number" class="input input-bordered" />
+  </div>
+
+  <div class="form-control mb-4">
+    <label class="label">Foto Produk</label>
+    <input type="file" @change="onFileChange" ref="fileInput" class="file-input file-input-bordered w-full" />
+  </div>
+
+  <button class="btn btn-primary w-full" @click="simpanProduk">Simpan Produk</button>
+</div>
+
+<!-- Daftar Produk -->
+<div>
+  <h2 class="text-xl font-bold mb-4">Daftar Produk</h2>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div
+      v-for="item in produkList"
+      :key="item.id"
+      class="card bg-base-100 shadow"
+    >
+      <figure>
+        <img
+          :src="item.foto_url || 'https://placehold.co/300x200?text=No+Image'"
+          alt="Foto Produk"
+          class="w-full h-28 object-cover"
+        />
+      </figure>
+      <div class="card-body p-2 text-center">
+        <h3 class="text-sm font-semibold">{{ item.name }}</h3>
+        <p class="text-primary font-bold">Rp {{ item.price }}</p>
+        <p class="text-xs text-gray-500">Modal: Rp {{ item.cost }}</p>
+        <button class="btn btn-xs btn-error mt-2" @click="hapusProduk(item.id)">Hapus</button>
       </div>
     </div>
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body"><h2 class="card-title">Daftar Produk</h2><div class="overflow-x-auto"><table class="table w-full"><thead><tr><th>Nama Produk</th><th>Harga Jual</th><th>Harga Modal</th><th class="w-1/4">Aksi</th></tr></thead><tbody><tr v-if="loading"><td colspan="4" class="text-center">Memuat data...</td></tr><tr v-else-if="products.length === 0"><td colspan="4" class="text-center">Belum ada produk.</td></tr><tr v-for="product in products" :key="product.id" class="hover"><td class="font-medium">{{ product.name }}</td><td>Rp {{ new Intl.NumberFormat('id-ID').format(product.price) }}</td><td>Rp {{ new Intl.NumberFormat('id-ID').format(product.cost) }}</td><td class="flex items-center gap-2"><button @click="openEditModal(product)" class="btn btn-ghost btn-sm btn-circle" title="Edit"><PencilSquareIcon class="h-5 w-5" /></button><button @click="deleteProduct(product.id, product.name)" class="btn btn-ghost btn-sm btn-circle text-error" title="Hapus"><TrashIcon class="h-5 w-5" /></button></td></tr></tbody></table></div></div>
-    </div>
-     <dialog class="modal" :class="{ 'modal-open': isEditModalOpen }">
-      <div class="modal-box"><h3 class="font-bold text-lg">Edit Produk</h3><form v-if="editingProduct" @submit.prevent="handleUpdateProduct" class="space-y-4 mt-4"><div class="form-control"><label class="label"><span class="label-text">Nama Produk</span></label><input type="text" v-model="editingProduct.name" class="input input-bordered" required /></div><div class="form-control"><label class="label"><span class="label-text">Harga Jual (Rp)</span></label><input type="number" v-model.number="editingProduct.price" class="input input-bordered" required /></div><div class="form-control"><label class="label"><span class="label-text">Harga Modal (Rp)</span></label><input type="number" v-model.number="editingProduct.cost" class="input input-bordered" required /></div><div class="modal-action"><button type="button" class="btn" @click="isEditModalOpen = false">Batal</button><button type="submit" :disabled="loading" class="btn btn-primary"><span v-if="loading" class="loading loading-spinner"></span>{{ loading ? '...' : 'Simpan' }}</button></div></form></div>
-    </dialog>
-    <div v-if="message" class="toast toast-top toast-center"><div class="alert alert-info"><span>{{ message }}</span></div></div>
   </div>
+</div>
+
+</div>
+
 </template>

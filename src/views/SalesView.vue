@@ -1,260 +1,225 @@
 <script setup>
-// --- Impor dari Library ---
-import { ref, watch } from 'vue';
-import { supabase } from '@/supabase';
-import { useUserStore } from '@/stores/userStore';
+// Impor library dan komponen yang diperlukan
+import { ref, onMounted, computed } from 'vue'
+import { supabase } from '@/supabase'
+import { useUserStore } from '@/stores/userStore'
 
-// --- Impor Ikon untuk Tombol Aksi ---
-import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
+// Panggil store user, untuk akses user & organization ID
+const userStore = useUserStore()
 
-// --- State Utama ---
-const userStore = useUserStore();
-const loading = ref(false);
-const message = ref('');
-const sales = ref([]);
-const products = ref([]);
+// Data produk yang tersedia
+const produkList = ref([])
 
-// --- State untuk Form Tambah Data ---
-const selectedProductId = ref(null);
-const quantity = ref(1);
-const saleDescription = ref('');
-const saleAmount = ref(0);
+// Keranjang belanja sementara
+const keranjang = ref([])
 
-// --- State untuk Modal Edit ---
-// 'editModal' adalah referensi ke elemen <dialog> di template
-const editModal = ref(null); 
-// 'editingSale' akan menampung data transaksi yang sedang diedit
-const editingSale = ref(null); 
+// Nomor WhatsApp pelanggan
+const nomorPelanggan = ref('')
 
-// --- Fungsi-Fungsi untuk Mengambil Data ---
+// Ambil daftar produk dari database saat halaman dibuka
+async function fetchProduk() {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('organization_id', userStore.organization.id)
+    .order('created_at', { ascending: false })
 
-async function getProducts() {
-  if (!userStore.organization?.id) return;
-  try {
-    const { data, error } = await supabase.from('products').select('*').eq('organization_id', userStore.organization.id).order('name');
-    if (error) throw error;
-    products.value = data;
-  } catch (error) {
-    console.error("Error mengambil data produk:", error.message);
-  }
-}
-
-async function getSales() {
-  if (!userStore.organization?.id) return;
-  loading.value = true;
-  try {
-    const { data, error } = await supabase.from('transactions').select('*').eq('category', 'Penjualan').eq('organization_id', userStore.organization.id).order('created_at', { ascending: false });
-    if (error) throw error;
-    sales.value = data;
-  } catch (error) {
-    message.value = `Error mengambil data: ${error.message}`;
-  } finally {
-    loading.value = false;
-  }
-}
-
-// Watcher untuk otomatis menghitung total pemasukan di form tambah
-watch([selectedProductId, quantity], () => {
-  if (!selectedProductId.value || quantity.value <= 0) {
-    saleAmount.value = 0;
-    saleDescription.value = '';
-    return;
-  }
-  const selectedProduct = products.value.find(p => p.id === selectedProductId.value);
-  if (selectedProduct) {
-    saleAmount.value = selectedProduct.price * quantity.value;
-    saleDescription.value = `${selectedProduct.name} (x${quantity.value})`;
-  }
-});
-
-
-// --- Fungsi untuk Aksi CRUD (Create, Read, Update, Delete) ---
-
-async function addSale() {
-  // ... (Fungsi addSale Anda tidak berubah, sudah bagus)
-  if (!userStore.organization?.id) { message.value = "Data organisasi tidak ditemukan. Coba refresh halaman."; return; }
-  if (!selectedProductId.value || quantity.value <= 0) { message.value = 'Silakan pilih produk dan isi jumlahnya.'; return; }
-  loading.value = true; message.value = '';
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from('transactions').insert([{
-      description: saleDescription.value, amount: saleAmount.value, type: 'income', category: 'Penjualan', user_id: user.id, organization_id: userStore.organization.id
-    }]);
-    if (error) throw error;
-    message.value = 'Transaksi penjualan berhasil ditambahkan!';
-    selectedProductId.value = null; quantity.value = 1;
-    await getSales(); // Refresh daftar penjualan
-  } catch (error) { 
-    message.value = `Error: ${error.message}`; 
-  } finally { 
-    loading.value = false; 
-    setTimeout(() => message.value = '', 3000);
-  }
-}
-
-// --- FUNGSI BARU: Hapus Penjualan ---
-async function deleteSale(saleId) {
-  // Tampilkan dialog konfirmasi sebelum menghapus
-  if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini? Aksi ini tidak dapat dibatalkan.')) {
-    return;
-  }
-  try {
-    const { error } = await supabase.from('transactions').delete().eq('id', saleId);
-    if (error) throw error;
-    message.value = 'Transaksi berhasil dihapus!';
-    await getSales(); // Refresh daftar penjualan
-  } catch (error) {
-    message.value = `Error menghapus data: ${error.message}`;
-  } finally {
-    setTimeout(() => message.value = '', 3000);
-  }
-}
-
-// --- FUNGSI BARU: Buka Modal Edit ---
-function openEditModal(sale) {
-  // Salin data 'sale' yang dipilih ke state 'editingSale'
-  // Untuk penjualan, kita tidak bisa langsung edit deskripsi/amount,
-  // karena itu turunan dari produk & kuantitas.
-  // Di sini, kita akan contohkan edit deskripsi secara manual.
-  editingSale.value = { ...sale }; // Salin data agar tidak mengubah data asli secara langsung
-  editModal.value.showModal(); // Tampilkan modal
-}
-
-// --- FUNGSI BARU: Simpan Perubahan (Update) ---
-async function updateSale() {
-  if (!editingSale.value) return;
-  loading.value = true;
-  try {
-    // Ambil data yang diubah dari form di dalam modal
-    const { error } = await supabase
-      .from('transactions')
-      .update({
-        description: editingSale.value.description,
-        amount: editingSale.value.amount,
-      })
-      .eq('id', editingSale.value.id);
-
-    if (error) throw error;
-    message.value = 'Transaksi berhasil diperbarui!';
-    await getSales(); // Refresh daftar penjualan
-    editModal.value.close(); // Tutup modal
-  } catch (error) {
-    message.value = `Error memperbarui data: ${error.message}`;
-  } finally {
-    loading.value = false;
-    setTimeout(() => message.value = '', 3000);
-  }
-}
-
-
-// Watcher untuk mengambil data saat komponen pertama kali dimuat
-watch(() => userStore.organization, (newOrgValue) => {
-  if (newOrgValue) {
-    getSales();
-    getProducts();
+  if (error) {
+    console.error('Gagal ambil produk:', error.message)
   } else {
-    sales.value = [];
-    products.value = [];
+    produkList.value = data
   }
-}, { immediate: true });
+}
+
+// Tambahkan produk ke keranjang
+function tambahKeKeranjang(item) {
+  keranjang.value.push({
+    id: item.id,
+    name: item.name,
+    price: item.price
+  })
+}
+
+// Hapus produk dari keranjang
+function hapusDariKeranjang(index) {
+  keranjang.value.splice(index, 1)
+}
+
+// Hitung total harga keranjang
+const totalHarga = computed(() => {
+  return keranjang.value.reduce((sum, item) => sum + item.price, 0)
+})
+
+// Simpan transaksi ke tabel 'transactions' untuk laporan keuangan
+async function simpanKeTransactions() {
+  const { error } = await supabase.from('transactions').insert({
+    description: 'Penjualan produk via kasir',
+    amount: totalHarga.value,
+    type: 'income', // <-- disini fix income
+    category: 'penjualan',
+    organization_id: userStore.organization.id,
+    user_id: userStore.session.user.id
+  })
+
+  if (error) {
+    alert('Gagal simpan ke transactions: ' + error.message)
+    return false
+  }
+  return true
+}
+
+// Simpan transaksi ke tabel 'sales' saja (tanpa kirim WA)
+async function simpanTransaksi() {
+  if (keranjang.value.length === 0) {
+    alert('Keranjang masih kosong!')
+    return
+  }
+
+  const { error } = await supabase.from('sales').insert({
+    customer_phone: nomorPelanggan.value,
+    total: totalHarga.value,
+    items: keranjang.value,
+    organization_id: userStore.organization.id,
+    user_id: userStore.session.user.id,
+  })
+
+  if (error) {
+    alert('Gagal simpan transaksi: ' + error.message)
+    return
+  }
+
+  const ok = await simpanKeTransactions()
+  if (!ok) return
+
+  alert('Transaksi berhasil disimpan!')
+  resetForm()
+}
+
+// Simpan transaksi lalu kirim struk ke WA
+async function kirimKeWhatsApp() {
+  if (keranjang.value.length === 0) {
+    alert('Keranjang masih kosong!')
+    return
+  }
+
+  const { error } = await supabase.from('sales').insert({
+    customer_phone: nomorPelanggan.value,
+    total: totalHarga.value,
+    items: keranjang.value,
+    organization_id: userStore.organization.id,
+    user_id: userStore.session.user.id,
+  })
+
+  if (error) {
+    alert('Gagal simpan transaksi: ' + error.message)
+    return
+  }
+
+  const ok = await simpanKeTransactions()
+  if (!ok) return
+
+  let pesan = `*Struk Finako:*\n\n`
+  keranjang.value.forEach((item, idx) => {
+    pesan += `${idx + 1}. ${item.name} - Rp ${item.price}\n`
+  })
+  pesan += `\n*Total: Rp ${totalHarga.value}*`
+
+  const encodedPesan = encodeURIComponent(pesan)
+  const nomor = nomorPelanggan.value.replace(/\D/g, '')
+  if (!nomor) {
+    alert('Masukkan nomor pelanggan terlebih dahulu.')
+    return
+  }
+
+  window.open(`https://wa.me/${nomor}?text=${encodedPesan}`, '_blank')
+
+  resetForm()
+}
+
+// Reset keranjang dan nomor pelanggan
+function resetForm() {
+  keranjang.value = []
+  nomorPelanggan.value = ''
+}
+
+// Panggil saat halaman pertama kali dimuat
+onMounted(() => {
+  fetchProduk()
+})
 </script>
 
-<template>
-  <div class="space-y-6">
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h2 class="card-title">Tambah Transaksi Penjualan</h2>
-        <form @submit.prevent="addSale" class="space-y-4">
-          <div class="form-control">
-            <label class="label"><span class="label-text">Pilih Produk/Menu</span></label>
-            <select v-model="selectedProductId" class="select select-bordered" required>
-              <option :value="null" disabled>-- Pilih Produk --</option>
-              <option v-for="product in products" :key="product.id" :value="product.id">
-                {{ product.name }} (Rp {{ new Intl.NumberFormat('id-ID').format(product.price) }})
-              </option>
-            </select>
-          </div>
-          <div class="form-control">
-            <label class="label"><span class="label-text">Jumlah (Qty)</span></label>
-            <input type="number" v-model.number="quantity" placeholder="1" class="input input-bordered" min="1" required />
-          </div>
-          <div class="form-control">
-            <label class="label"><span class="label-text">Total Pemasukan (Rp)</span></label>
-            <input type="text" :value="new Intl.NumberFormat('id-ID').format(saleAmount)" class="input input-bordered" disabled />
-          </div>
-          <div class="card-actions justify-end">
-            <button type="submit" :disabled="loading || !selectedProductId" class="btn btn-primary">
-              <span v-if="loading" class="loading loading-spinner"></span>
-              {{ loading ? 'Menyimpan...' : 'Simpan Penjualan' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
 
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h2 class="card-title">Riwayat Penjualan</h2>
-        <div v-if="loading && sales.length === 0" class="text-center p-4"><span class="loading loading-lg loading-spinner"></span></div>
-        <div v-else-if="sales.length === 0" class="text-center p-4 text-gray-500">Belum ada transaksi penjualan.</div>
-        <div v-else class="overflow-x-auto">
-          <table class="table w-full">
-            <thead>
-              <tr>
-                <th>Deskripsi</th>
-                <th>Jumlah</th>
-                <th>Tanggal</th>
-                <th v-if="userStore.userRole === 'owner'">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="sale in sales" :key="sale.id" class="hover">
-                <td>{{ sale.description }}</td>
-                <td class="text-success font-semibold">+ Rp {{ new Intl.NumberFormat('id-ID').format(sale.amount) }}</td>
-                <td>{{ new Date(sale.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) }}</td>
-                
-                <td v-if="userStore.userRole === 'owner'">
-                  <div class="flex items-center gap-2">
-                    <button @click="openEditModal(sale)" class="btn btn-ghost btn-sm btn-circle" title="Edit">
-                      <PencilSquareIcon class="h-5 w-5" />
-                    </button>
-                    <button @click="deleteSale(sale.id)" class="btn btn-ghost btn-sm btn-circle text-error" title="Hapus">
-                      <TrashIcon class="h-5 w-5" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+<template>
+  <div class="p-4 space-y-6">
+
+    <h2 class="text-xl font-bold">Pilih Produk</h2>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <!-- Tampilkan daftar produk -->
+      <div
+        v-for="item in produkList"
+        :key="item.id"
+        class="card bg-base-100 shadow cursor-pointer hover:scale-105 transition"
+        @click="tambahKeKeranjang(item)"
+      >
+        <figure>
+          <img
+            :src="item.foto_url || 'https://placehold.co/300x200?text=No+Image'"
+            alt="Produk"
+            class="w-full h-28 object-cover"
+          />
+        </figure>
+        <div class="card-body p-2 text-center">
+          <h3 class="text-sm font-semibold">{{ item.name }}</h3>
+          <p class="text-primary font-bold">Rp {{ item.price }}</p>
         </div>
       </div>
     </div>
 
-    <div v-if="message" class="toast toast-top toast-center">
-      <div class="alert alert-info shadow-lg"><span>{{ message }}</span></div>
+    <div class="divider"></div>
+
+    <h2 class="text-xl font-bold">Keranjang</h2>
+
+    <div v-if="keranjang.length === 0" class="text-gray-500">Belum ada produk dipilih.</div>
+
+    <div v-else>
+      <div class="form-control mb-4">
+        <label class="label">Nomor WA Pelanggan</label>
+        <input v-model="nomorPelanggan" type="text" class="input input-bordered" placeholder="contoh: 6281234567890" />
+      </div>
+
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Produk</th>
+            <th>Harga</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(item, index) in keranjang" :key="index">
+            <td>{{ index + 1 }}</td>
+            <td>{{ item.name }}</td>
+            <td>Rp {{ item.price }}</td>
+            <td>
+              <button class="btn btn-xs btn-error" @click="hapusDariKeranjang(index)">Hapus</button>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan="2">Total</th>
+            <th colspan="2">Rp {{ totalHarga }}</th>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div class="flex flex-col md:flex-row gap-2 mt-4">
+        <button class="btn btn-success flex-1" @click="simpanTransaksi">Simpan Transaksi</button>
+        <button class="btn btn-primary flex-1" @click="kirimKeWhatsApp">Kirim Struk ke WA & Simpan</button>
+      </div>
     </div>
 
-    <dialog ref="editModal" class="modal">
-      <div class="modal-box">
-        <h3 class="font-bold text-lg">Edit Transaksi Penjualan</h3>
-        <form @submit.prevent="updateSale" class="space-y-4 py-4" v-if="editingSale">
-          <div class="form-control">
-            <label class="label"><span class="label-text">Deskripsi</span></label>
-            <input type="text" v-model="editingSale.description" class="input input-bordered" required />
-          </div>
-          <div class="form-control">
-            <label class="label"><span class="label-text">Jumlah (Rp)</span></label>
-            <input type="number" v-model.number="editingSale.amount" class="input input-bordered" required />
-          </div>
-          <div class="modal-action">
-            <button type="button" class="btn" @click="editModal.close()">Batal</button>
-            <button type="submit" class="btn btn-primary" :disabled="loading">
-              <span v-if="loading" class="loading loading-spinner"></span>
-              Simpan Perubahan
-            </button>
-          </div>
-        </form>
-      </div>
-    </dialog>
   </div>
 </template>

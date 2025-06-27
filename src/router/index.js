@@ -36,28 +36,37 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  // Dapatkan status sesi terbaru langsung dari Supabase
   const { data: { session } } = await supabase.auth.getSession();
-
-  // Cek apakah rute yang dituju memerlukan autentikasi
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-
-  // Cek apakah pengguna sudah login berdasarkan ada atau tidaknya sesi
   const isLoggedIn = !!session;
 
+  const userStore = useUserStore();
+  // Pastikan profil user udah di-load biar role-nya bisa dipakai
+  if (isLoggedIn && !userStore.isReady) {
+    await userStore.fetchUserProfile();
+  }
+
   if (requiresAuth && !isLoggedIn) {
-    // KASUS 1: Pengguna mencoba akses halaman terproteksi TAPI belum login.
-    // Solusi: Paksa ke halaman Login.
     next({ name: 'Login' });
   } else if (to.name === 'Login' && isLoggedIn) {
-    // KASUS 2: Pengguna SUDAH login TAPI mencoba akses halaman Login.
-    // Solusi: Arahkan ke Dashboard.
-    next({ name: 'Dashboard' });
+    // Pegawai login langsung ke Penjualan
+    if (userStore.userRole === 'pegawai') {
+      next({ name: 'Penjualan' });
+    } else {
+      next({ name: 'Dashboard' });
+    }
+  } else if (isLoggedIn && userStore.userRole === 'pegawai') {
+    // Kalau pegawai, hanya boleh akses Penjualan dan Operasional
+    if (['Penjualan', 'Operasional'].includes(to.name)) {
+      next();
+    } else {
+      // Arahkan ke Penjualan kalau maksa buka halaman lain
+      next({ name: 'Penjualan' });
+    }
   } else {
-    // KASUS 3: Semua kondisi lain (misal: akses halaman terproteksi & sudah login).
-    // Solusi: Izinkan navigasi.
     next();
   }
 });
+
 
 export default router
