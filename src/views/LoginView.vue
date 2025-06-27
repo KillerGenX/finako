@@ -1,28 +1,32 @@
+// File: src/views/LoginView.vue (VERSI PERBAIKAN)
+
 <script setup>
+// --- Impor dari Library ---
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "@/supabase";
 
-// --- Variabel Reaktif ---
+// --- Impor Store ---
+// PENTING: Kita perlu mengimpor userStore untuk mengakses action-nya.
+import { useUserStore } from "@/stores/userStore";
 
-// Variabel untuk menampung inputan pengguna dari form login
+// --- Variabel Reaktif ---
 const email = ref("");
 const password = ref("");
-
-// Variabel untuk mengontrol status aplikasi
 const loading = ref(false);
 const message = ref("");
 
-// Inisialisasi router untuk mengarahkan pengguna setelah login
+// --- Inisialisasi ---
 const router = useRouter();
+// PENTING: Inisialisasi store agar bisa kita panggil fungsinya.
+const userStore = useUserStore();
 
 // --- Fungsi Utama ---
-
-// Fungsi yang akan dijalankan saat form login di-submit
 async function handleLogin() {
   try {
+    // Set status loading menjadi true untuk menampilkan spinner di tombol
     loading.value = true;
-    message.value = "";
+    message.value = ""; // Bersihkan pesan error sebelumnya
 
     // Kirim permintaan login ke Supabase
     const { error } = await supabase.auth.signInWithPassword({
@@ -30,13 +34,23 @@ async function handleLogin() {
       password: password.value,
     });
 
+    // Jika Supabase mengembalikan error (misal: password salah), hentikan proses
     if (error) throw error;
 
-    // Jika login berhasil, arahkan pengguna ke halaman utama (dasbor)
+    // --- PERBAIKAN UTAMA ADA DI SINI ---
+    // Setelah login di Supabase berhasil, panggil action dari store.
+    // 'await' memastikan kita menunggu sampai semua data (profil, role, organisasi)
+    // selesai diambil dan disimpan di store.
+    await userStore.fetchUserProfile();
+
+    // Setelah semua data siap di store, baru arahkan pengguna ke halaman utama.
     router.push("/");
+
   } catch (error) {
+    // Jika terjadi error, tampilkan pesannya ke pengguna
     message.value = error.message;
   } finally {
+    // Apapun hasilnya (berhasil atau gagal), hentikan status loading
     loading.value = false;
   }
 }

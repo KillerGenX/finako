@@ -1,47 +1,73 @@
-// File: src/stores/userStore.js (Dengan status 'isReady')
+// File: src/stores/userStore.js (VERSI FINAL & BERSIH)
 
-import { defineStore } from "pinia";
-import { ref, computed } from "vue";
-import { supabase } from "@/supabase";
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { supabase } from '@/supabase'
 
-export const useUserStore = defineStore("user", () => {
-  // --- STATE ---
-  const session = ref(null);
-  const profile = ref(null);
-  const isReady = ref(false); // <-- BAGIAN BARU: Awalnya, statusnya 'tidak siap'
+export const useUserStore = defineStore('user', () => {
+  // --- STATE: Gunakan 'ref' untuk semua state yang bisa berubah ---
+  const session = ref(null)
+  const profile = ref(null)
+  const organization = ref(null)
+  const role = ref(null)
+  const isReady = ref(false)
 
-  // --- GETTERS ---
-  const role = computed(() => profile.value?.role || "public");
-  const isLoggedIn = computed(() => !!session.value);
+  // --- GETTERS: Gunakan 'computed' untuk nilai turunan ---
+  const userRole = computed(() => role.value || 'public')
+  const isLoggedIn = computed(() => !!session.value)
 
-  // --- ACTIONS ---
+  // --- ACTIONS: Fungsi untuk mengubah state ---
   async function fetchUserProfile() {
-    // Set 'isReady' ke false setiap kali kita mulai mengambil data baru
     isReady.value = false;
     try {
-      const {
-        data: { session: currentSession },
-      } = await supabase.auth.getSession();
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
       session.value = currentSession;
-      if (!session.value) return;
 
-      const { data: userProfile, error } = await supabase.from("profiles").select("*").eq("id", session.value.user.id).single();
+      if (!session.value) {
+        isReady.value = true; // Siap, karena tidak ada yang perlu diambil
+        return;
+      }
 
-      if (error) throw error;
-      profile.value = userProfile;
+      // Ambil data keanggotaan
+      const { data: memberData, error: memberError } = await supabase
+        .from('organization_members')
+        .select(`role, organizations ( id, name )`)
+        .eq('user_id', session.value.user.id);
+        
+      if (memberError) throw memberError;
+      
+      if (memberData && memberData.length > 0) {
+        const primaryMembership = memberData[0];
+        role.value = primaryMembership.role;
+        organization.value = primaryMembership.organizations;
+      }
+
+      // Ambil data profil
+      const { data: userProfileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.value.user.id);
+        
+      if (profileError) throw profileError;
+
+      if (userProfileData && userProfileData.length > 0) {
+        profile.value = userProfileData[0];
+      }
+
     } catch (e) {
-      console.error("Error fetching user profile:", e.message);
+      console.error("Error di dalam fetchUserProfile:", e.message);
     } finally {
-      // <-- BAGIAN BARU: Apapun hasilnya (sukses/gagal), tandai bahwa store sudah 'siap'
+      // Apapun yang terjadi, nyatakan proses fetch selesai
       isReady.value = true;
     }
   }
 
   function clearUserProfile() {
-    profile.value = null;
     session.value = null;
+    profile.value = null;
+    organization.value = null;
+    role.value = null;
   }
 
-  // Kembalikan juga 'isReady' agar bisa digunakan komponen lain
-  return { session, profile, fetchUserProfile, role, isLoggedIn, clearUserProfile, isReady };
-});
+  return { session, profile, organization, role, userRole, isLoggedIn, isReady, fetchUserProfile, clearUserProfile }
+})

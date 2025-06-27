@@ -1,120 +1,111 @@
 <script setup>
-import { ref, onMounted } from "vue";
-import { supabase } from "@/supabase";
+import { ref, watch } from 'vue'
+import { supabase } from '@/supabase'
+import { useUserStore } from '@/stores/userStore'
 
-// Variabel untuk status loading dan pesan feedback
-const loading = ref(false);
-const message = ref("");
+const userStore = useUserStore()
+const loading = ref(false)
+const message = ref('')
+const form = ref({
+  fixed_costs: 0,
+  avg_variable_cost: 0,
+  avg_selling_price: 0
+})
 
-// Variabel reaktif untuk menampung data dari form
-const fixedCosts = ref(0);
-const avgVariableCost = ref(0);
-const avgSellingPrice = ref(0);
-
-// Variabel untuk menyimpan ID profil yang sudah ada (jika ada)
-const profileId = ref(null);
-
-// Fungsi untuk menyimpan atau memperbarui data pengaturan
-async function handleSaveSettings() {
-  loading.value = true;
-  message.value = "";
-  try {
-    // Ambil ID pengguna yang sedang login
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    // Siapkan data yang akan dikirim ke Supabase
-    const profileData = {
-      // Kita TIDAK lagi memasukkan ID di sini secara langsung
-      user_id: user.id,
-      fixed_costs: fixedCosts.value,
-      avg_variable_cost: avgVariableCost.value,
-      avg_selling_price: avgSellingPrice.value,
-    };
-
-    // --- INI BAGIAN YANG DIPERBAIKI ---
-    // Jika kita sedang mengedit profil yang sudah ada (profileId tidak null),
-    // maka kita tambahkan properti 'id' ke objek data kita.
-    if (profileId.value) {
-      profileData.id = profileId.value;
-    }
-    // Jika tidak, kita biarkan kosong agar Supabase membuat ID baru (INSERT).
-
-    // Gunakan .upsert()!
-    const { error } = await supabase.from("business_profiles").upsert(profileData).select();
-
-    if (error) throw error;
-
-    message.value = "Pengaturan berhasil disimpan!";
-  } catch (error) {
-    message.value = `Error: ${error.message}`;
-    // Tampilkan error di console untuk debugging lebih lanjut
-    console.error(error);
-  } finally {
-    loading.value = false;
-  }
-}
-
-// Fungsi yang berjalan saat halaman pertama kali dimuat (tidak ada perubahan)
-onMounted(async () => {
+async function getSettings() {
+  if (!userStore.organization?.id) return;
   loading.value = true;
   try {
-    const { data, error } = await supabase.from("business_profiles").select("*").single();
+    const { data, error } = await supabase
+      .from('business_profiles')
+      .select('*')
+      .eq('organization_id', userStore.organization.id)
+      .single();
 
-    if (error && error.code !== "PGRST116") {
-      throw error;
-    }
+    // Abaikan error jika data belum ada, itu normal
+    if (error && error.code !== 'PGRST116') throw error;
 
     if (data) {
-      fixedCosts.value = data.fixed_costs;
-      avgVariableCost.value = data.avg_variable_cost;
-      avgSellingPrice.value = data.avg_selling_price;
-      profileId.value = data.id;
+      form.value.fixed_costs = data.fixed_costs;
+      form.value.avg_variable_cost = data.avg_variable_cost;
+      form.value.avg_selling_price = data.avg_selling_price;
     }
   } catch (error) {
     message.value = `Gagal memuat pengaturan: ${error.message}`;
   } finally {
     loading.value = false;
   }
-});
+}
+
+async function handleSaveSettings() {
+  if (!userStore.organization?.id) {
+    message.value = "Data organisasi tidak siap. Coba refresh.";
+    return;
+  }
+  loading.value = true;
+  message.value = '';
+  try {
+    const profileData = {
+      organization_id: userStore.organization.id,
+      fixed_costs: form.value.fixed_costs,
+      avg_variable_cost: form.value.avg_variable_cost,
+      avg_selling_price: form.value.avg_selling_price,
+    };
+
+    // Gunakan upsert: jika data sudah ada, update. Jika belum, buat baru.
+    const { error } = await supabase.from('business_profiles').upsert(profileData, {
+      onConflict: 'organization_id'
+    });
+
+    if (error) throw error;
+    message.value = 'Pengaturan berhasil disimpan!';
+  } catch (error) {
+    message.value = `Error: ${error.message}`;
+  } finally {
+    loading.value = false;
+  }
+}
+
+// "Pengawas Cerdas" yang menunggu data organisasi siap
+watch(() => userStore.organization, (newOrg) => {
+  if (newOrg) {
+    getSettings();
+  }
+}, { immediate: true });
 </script>
 
 <template>
   <div class="card bg-base-100 shadow-xl">
     <div class="card-body">
       <h2 class="card-title text-2xl">Pengaturan Usaha</h2>
-      <p class="mb-4">Masukkan data dasar usaha Anda untuk kalkulasi BEP.</p>
+      <p class="mb-4">Data yang Anda masukkan di sini akan digunakan untuk semua kalkulasi BEP di dasbor.</p>
 
       <form @submit.prevent="handleSaveSettings" class="space-y-4">
         <div class="form-control">
           <label class="label"><span class="label-text">Total Biaya Tetap per Bulan (Rp)</span></label>
-          <input type="number" v-model.number="fixedCosts" placeholder="Contoh: 5000000" class="input input-bordered" required />
+          <input type="number" v-model.number="form.fixed_costs" placeholder="Contoh: 5000000" class="input input-bordered" required />
           <label class="label"><span class="label-text-alt">Contoh: Gaji, Sewa, Listrik, Internet.</span></label>
         </div>
-
         <div class="form-control">
           <label class="label"><span class="label-text">Rata-rata Biaya Variabel per Produk (Rp)</span></label>
-          <input type="number" v-model.number="avgVariableCost" placeholder="Contoh: 50000" class="input input-bordered" required />
+          <input type="number" v-model.number="form.avg_variable_cost" placeholder="Contoh: 50000" class="input input-bordered" required />
           <label class="label"><span class="label-text-alt">Contoh: Harga Pokok / Modal untuk 1 unit produk.</span></label>
         </div>
-
         <div class="form-control">
           <label class="label"><span class="label-text">Rata-rata Harga Jual per Produk (Rp)</span></label>
-          <input type="number" v-model.number="avgSellingPrice" placeholder="Contoh: 80000" class="input input-bordered" required />
+          <input type="number" v-model.number="form.avg_selling_price" placeholder="Contoh: 80000" class="input input-bordered" required />
           <label class="label"><span class="label-text-alt">Harga jual ke pelanggan untuk 1 unit produk.</span></label>
         </div>
-
         <div class="card-actions justify-end mt-4">
           <button type="submit" :disabled="loading" class="btn btn-primary">
             <span v-if="loading" class="loading loading-spinner"></span>
-            {{ loading ? "Menyimpan..." : "Simpan Pengaturan" }}
+            {{ loading ? 'Menyimpan...' : 'Simpan Pengaturan' }}
           </button>
         </div>
       </form>
-
+      
       <div v-if="message" class="toast toast-top toast-center">
-        <div class="alert alert-success">
+        <div class="alert alert-info">
           <span>{{ message }}</span>
         </div>
       </div>
