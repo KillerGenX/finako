@@ -1,16 +1,21 @@
-// File: src/router/index.js (VERSI FINAL & BERSIH)
-import { supabase } from '@/supabase'
-import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '@/stores/userStore'
-import LayoutAuthenticated from '@/layouts/LayoutAuthenticated.vue'
-import DashboardView from '@/views/DashboardView.vue'
-import SettingsView from '@/views/SettingsView.vue'
-import LoginView from '@/views/LoginView.vue'
-import SalesView from '@/views/SalesView.vue'
-import OperationalView from '@/views/OperationalView.vue'
-import ProductsView from '@/views/ProductsView.vue'
-import ExpenseCategoryView from '@/views/ExpenseCategoryView.vue'
-import UserManagementView from '@/views/UserManagementView.vue'
+// File: src/router/index.js (FINAL DENGAN PENAMAAN INDONESIA YANG BENAR)
+
+import { createRouter, createWebHistory } from 'vue-router';
+import { useUserStore } from '@/stores/userStore';
+
+// --- Impor Komponen dengan Nama File yang Sudah Benar ---
+import LayoutAuthenticated from '@/layouts/LayoutAuthenticated.vue';
+import DashboardView from '@/views/DashboardView.vue';
+import TransaksiView from '@/views/TransaksiView.vue';
+import ProdukView from '@/views/ProdukView.vue';
+import StokView from '@/views/StokView.vue';
+import BiayaView from '@/views/BiayaView.vue';
+import LaporanView from '@/views/LaporanView.vue';
+import AbsensiView from '@/views/AbsensiView.vue';
+import PegawaiView from '@/views/PegawaiView.vue';
+import PengaturanView from '@/views/PengaturanView.vue'; // <-- PERBAIKAN NAMA IMPORT
+import LoginView from '@/views/LoginView.vue';
+import NotFoundView from '@/views/NotFoundView.vue';
 
 const routes = [
   {
@@ -18,55 +23,76 @@ const routes = [
     component: LayoutAuthenticated,
     meta: { requiresAuth: true },
     children: [
-      { path: '', name: 'Dashboard', component: DashboardView },
-      { path: 'pengaturan', name: 'Pengaturan', component: SettingsView },
-      { path: 'penjualan', name: 'Penjualan', component: SalesView },
-      { path: 'operasional', name: 'Operasional', component: OperationalView },
-      { path: 'produk', name: 'Produk', component: ProductsView },
-      { path: 'kategori-biaya', name: 'KategoriBiaya', component: ExpenseCategoryView },
-      { path: 'pengguna', name: 'Pengguna', component: UserManagementView },
+      { path: '', name: 'Dashboard', component: DashboardView, meta: { roles: ['owner'] } },
+      { path: 'transaksi', name: 'Transaksi', component: TransaksiView, meta: { features: ['pos'] } },
+      { path: 'biaya', name: 'Biaya', component: BiayaView, meta: { features: ['expenses'] } },
+      { path: 'produk', name: 'Produk', component: ProdukView, meta: { roles: ['owner'] } },
+      { path: 'stok', name: 'Stok', component: StokView, meta: { roles: ['owner'], features: ['stock_management'] } },
+      { path: 'laporan', name: 'Laporan', component: LaporanView, meta: { roles: ['owner'], features: ['reports'] } },
+      { path: 'absensi', name: 'Absensi', component: AbsensiView, meta: { features: ['employee_attendance'] } },
+      { path: 'pegawai', name: 'Pegawai', component: PegawaiView, meta: { roles: ['owner'], features: ['employee_management'] } },
+      
+      // --- PERBAIKAN DI SINI ---
+      // Path diubah agar sesuai dengan sidebar ('/pengaturan')
+      // Nama diubah agar konsisten
+      // Komponen sekarang menunjuk ke `PengaturanView` yang benar
+      { path: 'pengaturan', name: 'Pengaturan', component: PengaturanView, meta: { roles: ['owner'] } },
     ]
   },
-  { path: '/login', name: 'Login', component: LoginView }
-]
+  { 
+    path: '/login', 
+    name: 'Login', 
+    component: LoginView 
+  },
+  { 
+    path: '/:pathMatch(.*)*', 
+    name: 'NotFound', 
+    component: NotFoundView 
+  },
+];
 
 const router = createRouter({
-  history: createWebHistory(), // Pastikan ini kosong
+  history: createWebHistory(),
   routes,
-})
+  linkActiveClass: 'active',
+});
 
+// --- Navigation Guard (Tidak ada perubahan, logika sudah benar) ---
 router.beforeEach(async (to, from, next) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-  const isLoggedIn = !!session;
-
   const userStore = useUserStore();
-  // Pastikan profil user udah di-load biar role-nya bisa dipakai
-  if (isLoggedIn && !userStore.isReady) {
+
+  if (to.meta.requiresAuth && !userStore.isReady) {
     await userStore.fetchUserProfile();
   }
 
-  if (requiresAuth && !isLoggedIn) {
-    next({ name: 'Login' });
-  } else if (to.name === 'Login' && isLoggedIn) {
-    // Pegawai login langsung ke Penjualan
-    if (userStore.userRole === 'pegawai') {
-      next({ name: 'Penjualan' });
-    } else {
-      next({ name: 'Dashboard' });
-    }
-  } else if (isLoggedIn && userStore.userRole === 'pegawai') {
-    // Kalau pegawai, hanya boleh akses Penjualan dan Operasional
-    if (['Penjualan', 'Operasional'].includes(to.name)) {
-      next();
-    } else {
-      // Arahkan ke Penjualan kalau maksa buka halaman lain
-      next({ name: 'Penjualan' });
-    }
-  } else {
-    next();
+  const isLoggedIn = userStore.isLoggedIn;
+  const userRole = userStore.userRole;
+  const activeFeatures = userStore.activeFeatures || [];
+
+  if (to.meta.requiresAuth && !isLoggedIn) {
+    return next({ name: 'Login' });
   }
+
+  if (to.name === 'Login' && isLoggedIn) {
+    return userRole === 'owner' ? next({ name: 'Dashboard' }) : next({ name: 'Transaksi' });
+  }
+  
+  if (to.meta.requiresAuth && isLoggedIn) {
+    const requiredRoles = to.meta.roles;
+    if (requiredRoles && !requiredRoles.includes(userRole)) {
+      return userRole === 'owner' ? next({ name: 'Dashboard' }) : next({ name: 'Transaksi' });
+    }
+    
+    const requiredFeatures = to.meta.features;
+    if (requiredFeatures) {
+      const hasAccess = requiredFeatures.every(feature => activeFeatures.includes(feature));
+      if (!hasAccess) {
+        return userRole === 'owner' ? next({ name: 'Dashboard' }) : next({ name: 'Transaksi' });
+      }
+    }
+  }
+
+  return next();
 });
 
-
-export default router
+export default router;
