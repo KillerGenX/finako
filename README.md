@@ -1,5 +1,17 @@
-# Vue 3 + Vite
+# Finako - Aplikasi POS SaaS untuk UMKM
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Finako adalah sebuah proyek aplikasi Point of Sale (POS) berbasis web yang dirancang khusus untuk memberdayakan Usaha Mikro, Kecil, dan Menengah (UMKM) di Indonesia.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## Visi Proyek
+
+Tujuan utama Finako adalah menyediakan alat bantu digital yang modern, cepat, dan terjangkau bagi para pelaku usaha yang selama ini kurang terlayani oleh solusi enterprise yang mahal dan rumit.
+
+## Teknologi yang Digunakan
+
+* **Frontend:** Vue.js 3 dengan Vite
+* **Styling:** Tailwind CSS & DaisyUI
+* **Backend (Saat Ini):** Supabase (Auth, Database, Storage, Edge Functions)
+* **Backend (Rencana v4.0):** Node.js, Express.js, PostgreSQL, di-hosting di cloud.
+
+---
+*Proyek ini sedang dalam pengembangan aktif sebagai bagian dari program pembelajaran saya yang didukung oleh GitHub Student Developer Pack.*
