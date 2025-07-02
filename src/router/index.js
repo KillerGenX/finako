@@ -12,10 +12,12 @@ import StokView from '@/views/StokView.vue';
 import BiayaView from '@/views/BiayaView.vue';
 import LaporanView from '@/views/LaporanView.vue';
 import AbsensiView from '@/views/AbsensiView.vue';
+import PelangganView from '@/views/PelangganView.vue';
 import PegawaiView from '@/views/PegawaiView.vue';
 import PengaturanView from '@/views/PengaturanView.vue'; // <-- PERBAIKAN NAMA IMPORT
 import LoginView from '@/views/LoginView.vue';
 import NotFoundView from '@/views/NotFoundView.vue';
+import KategoriBiayaView from '@/views/KategoriBiayaView.vue';
 
 const routes = [
   {
@@ -31,6 +33,8 @@ const routes = [
       { path: 'laporan', name: 'Laporan', component: LaporanView, meta: { roles: ['owner'], features: ['reports'] } },
       { path: 'absensi', name: 'Absensi', component: AbsensiView, meta: { features: ['employee_attendance'] } },
       { path: 'pegawai', name: 'Pegawai', component: PegawaiView, meta: { roles: ['owner'], features: ['employee_management'] } },
+      { path: 'kategori-biaya', name: 'KategoriBiaya', component: KategoriBiayaView, meta: { roles: ['owner'] } },
+      { path: 'pelanggan', name: 'Pelanggan', component: PelangganView, meta: { roles: ['owner'], features: ['customer_data'] } },
       
       // --- PERBAIKAN DI SINI ---
       // Path diubah agar sesuai dengan sidebar ('/pengaturan')

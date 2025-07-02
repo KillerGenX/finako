@@ -9,7 +9,7 @@ import ReceiptTemplate from '@/components/ReceiptTemplate.vue';
 // --- Impor Ikon ---
 import { 
   PlusIcon, MinusIcon, TrashIcon, QrCodeIcon, DocumentCheckIcon, 
-  PrinterIcon, PaperAirplaneIcon, TagIcon 
+  PrinterIcon, PaperAirplaneIcon, TagIcon, PencilIcon 
 } from '@heroicons/vue/24/solid';
 
 const userStore = useUserStore();
@@ -31,37 +31,16 @@ const serviceChargePercent = ref(5);
 // --- State Modal & Pembayaran ---
 const paymentModal = ref(null);
 const payments = ref([]);
-const amountPaid = ref(0);
-const formattedAmountPaid = ref('');
-const quickCashOptions = [5000, 10000, 20000, 50000, 100000];
+const amountPaid = ref(0); // Menyimpan nilai angka MURNI untuk kalkulasi
+const formattedAmountPaid = ref(''); // Menyimpan nilai yang TAMPIL di input
+const quickCashOptions = [10000, 20000, 50000, 100000, 200000];
 
-// --- State Notifikasi ---
-const toastMessage = ref('');
-const toastType = ref('info');
-const toastKey = ref(0);
+// --- State Struk ---
+const generatedReceiptUrl = ref('');
+const lastSaleId = ref(null);
+const receiptTemplateRef = ref(null);
 
-// --- Computed Properties ---
-const filteredProdukList = computed(() => {
-  if (!searchTerm.value) return produkList.value;
-  return produkList.value.filter(p => p.name.toLowerCase().includes(searchTerm.value.toLowerCase()));
-});
-const subtotal = computed(() => keranjang.value.reduce((sum, item) => sum + (item.price * item.quantity), 0));
-const totalDiscount = computed(() => (globalDiscount.value.type === 'percentage') ? (subtotal.value * globalDiscount.value.value) / 100 : globalDiscount.value.value);
-const subtotalAfterDiscount = computed(() => subtotal.value - totalDiscount.value);
-const serviceChargeAmount = computed(() => userStore.activeFeatures.includes('service_charge') ? (subtotalAfterDiscount.value * serviceChargePercent.value) / 100 : 0);
-const taxAmount = computed(() => userStore.activeFeatures.includes('tax_ppn') ? ((subtotalAfterDiscount.value + serviceChargeAmount.value) * taxPercent.value) / 100 : 0);
-const grandTotal = computed(() => subtotalAfterDiscount.value + serviceChargeAmount.value + taxAmount.value);
-const totalPaid = computed(() => {
-    if (userStore.activeFeatures.includes('multi_payment')) {
-        return payments.value.reduce((sum, p) => sum + p.amount, 0);
-    }
-    return amountPaid.value;
-});
-const changeAmount = computed(() => totalPaid.value - grandTotal.value);
-
-
-// --- Fungsi-fungsi ---
-
+// --- Fungsi Pengambilan Data ---
 async function fetchProduk() {
   if (!userStore.organization?.id) return;
   loading.value = true;
@@ -74,12 +53,36 @@ async function fetchProduk() {
     if (error) throw error;
     produkList.value = data;
   } catch (error) {
-    showToast(`Error mengambil produk: ${error.message}`, 'error');
+    userStore.showNotification(`Error mengambil produk: ${error.message}`, 'error');
   } finally {
     loading.value = false;
   }
 }
 
+// --- Computed Properties ---
+const filteredProdukList = computed(() => {
+  if (!searchTerm.value) return produkList.value;
+  return produkList.value.filter(p => p.name.toLowerCase().includes(searchTerm.value.toLowerCase()));
+});
+
+// Kalkulasi Harga Bertingkat
+const subtotal = computed(() => keranjang.value.reduce((sum, item) => sum + (item.price * item.quantity), 0));
+const totalDiscount = computed(() => (globalDiscount.value.type === 'percentage') ? (subtotal.value * globalDiscount.value.value) / 100 : globalDiscount.value.value);
+const subtotalAfterDiscount = computed(() => subtotal.value - totalDiscount.value);
+const serviceChargeAmount = computed(() => userStore.activeFeatures.includes('service_charge') ? (subtotalAfterDiscount.value * serviceChargePercent.value) / 100 : 0);
+const taxAmount = computed(() => userStore.activeFeatures.includes('tax_ppn') ? ((subtotalAfterDiscount.value + serviceChargeAmount.value) * taxPercent.value) / 100 : 0);
+const grandTotal = computed(() => subtotalAfterDiscount.value + serviceChargeAmount.value + taxAmount.value);
+
+const totalPaid = computed(() => {
+    if (userStore.activeFeatures.includes('multi_payment')) {
+        return payments.value.reduce((sum, p) => sum + p.amount, 0);
+    }
+    return amountPaid.value;
+});
+const changeAmount = computed(() => totalPaid.value - grandTotal.value);
+
+
+// --- Logika Keranjang Belanja ---
 function tambahKeKeranjang(produk) {
   const itemDiKeranjang = keranjang.value.find(item => item.id === produk.id);
   if (itemDiKeranjang) {
@@ -88,23 +91,22 @@ function tambahKeKeranjang(produk) {
     keranjang.value.push({ ...produk, quantity: 1, discount: 0, note: '' });
   }
 }
-
 function incrementQuantity(item) { item.quantity++; }
 function decrementQuantity(item) {
   item.quantity--;
   if (item.quantity === 0) hapusDariKeranjang(item.id);
 }
-
 function hapusDariKeranjang(produkId) {
   keranjang.value = keranjang.value.filter(item => item.id !== produkId);
 }
 
+// --- Fungsi Aksi, Modal & Transaksi ---
 function fiturBelumTersedia(fitur = 'ini') {
-  showToast(`Fitur '${fitur}' akan segera tersedia di paket yang lebih tinggi.`, 'info');
+  userStore.showNotification(`Fitur '${fitur}' akan segera tersedia.`, 'info');
 }
 
 function openPaymentModal() {
-  if (keranjang.value.length === 0) return showToast('Keranjang masih kosong!', 'warning');
+  if (keranjang.value.length === 0) return userStore.showNotification('Keranjang masih kosong!', 'warning');
   payments.value = [];
   amountPaid.value = 0;
   formattedAmountPaid.value = '';
@@ -120,30 +122,76 @@ function addPayment() {
 }
 
 async function processTransaction() {
-  if (totalPaid.value < grandTotal.value) return showToast('Jumlah pembayaran kurang!', 'error');
+  if (totalPaid.value < grandTotal.value) return userStore.showNotification('Jumlah pembayaran kurang!', 'error');
   
   isProcessing.value = true;
   try {
+    let customerId = null; // Mulai dengan null, artinya pelanggan tidak terdaftar
+
+    // --- LOGIKA BARU: HANYA PROSES PELANGGAN JIKA NOMOR HP DIISI ---
+    if (customerPhone.value) {
+      // Membersihkan nomor HP dari karakter selain angka
+      const cleanedPhone = customerPhone.value.replace(/\D/g, '');
+
+      const { data: customerData, error: customerError } = await supabase
+        .from('customers')
+        .upsert(
+          { 
+            organization_id: userStore.organization.id,
+            phone_number: cleanedPhone, // Gunakan nomor yang sudah bersih
+            name: customerName.value || cleanedPhone // Jika nama kosong, gunakan no hp sbg nama
+          },
+          { 
+            onConflict: 'organization_id, phone_number', // Kunci unik
+            ignoreDuplicates: false // Pastikan data diupdate jika ada konflik
+          }
+        )
+        .select('id')
+        .single();
+      
+      if (customerError) throw new Error(`Gagal menyimpan data pelanggan: ${customerError.message}`);
+      
+      // Jika berhasil, kita dapatkan ID pelanggannya
+      customerId = customerData.id;
+    }
+    // --- AKHIR LOGIKA BARU ---
+
+
+    // Proses penyimpanan ke 'sales' dan 'transactions' tetap berjalan
     const itemsToSave = keranjang.value.map(item => ({ product_id: item.id, name: item.name, price: item.price, quantity: item.quantity, cost_price: item.cost_price }));
     
     const { data: saleData, error: saleError } = await supabase.from('sales').insert({
-      customer_phone: customerPhone.value, customer_name: customerName.value, total: grandTotal.value, items: itemsToSave, organization_id: userStore.organization.id, user_id: userStore.session.user.id,
-      discount_value: totalDiscount.value, tax_amount: taxAmount.value, service_charge_amount: serviceChargeAmount.value, status: 'completed'
+      customer_id: customerId, // <-- Menyimpan ID pelanggan (bisa null jika no hp kosong)
+      customer_phone: customerPhone.value, 
+      customer_name: customerName.value, 
+      total: grandTotal.value, 
+      items: itemsToSave, 
+      organization_id: userStore.organization.id, 
+      user_id: userStore.session.user.id,
+      discount_value: totalDiscount.value, 
+      tax_amount: taxAmount.value, 
+      service_charge_amount: serviceChargeAmount.value, 
+      status: 'completed'
     }).select().single();
     if (saleError) throw saleError;
 
     const { error: transactionError } = await supabase.from('transactions').insert({
-      description: `Penjualan #${saleData.id}`, amount: grandTotal.value, type: 'income', category: 'Penjualan', 
-      organization_id: userStore.organization.id, user_id: userStore.session.user.id, sale_id: saleData.id
+      description: `Penjualan #${saleData.id}`, 
+      amount: grandTotal.value, 
+      type: 'income', 
+      category: 'Penjualan', 
+      organization_id: userStore.organization.id, 
+      user_id: userStore.session.user.id, 
+      sale_id: saleData.id
     });
     if (transactionError) throw transactionError;
     
-    showToast('Transaksi berhasil disimpan!', 'success');
+    userStore.showNotification('Transaksi berhasil disimpan!', 'success');
     paymentModal.value.close();
     resetForm();
 
   } catch(error) {
-    showToast('Gagal menyimpan transaksi: ' + error.message, 'error');
+    userStore.showNotification(`Gagal: ${error.message}`, 'error');
   } finally {
     isProcessing.value = false;
   }
@@ -164,15 +212,11 @@ function formatRupiah(angka) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(angka || 0);
 }
 
-// Fungsi untuk menangani input manual dan memformatnya
 function handleManualInput(event) {
   const rawValue = event.target.value.replace(/\D/g, '');
   const numberValue = Number(rawValue);
-  
   amountPaid.value = numberValue;
-  
   if (rawValue) {
-    // Trik untuk menjaga posisi kursor: jangan set value jika sama
     const formatted = new Intl.NumberFormat('id-ID').format(numberValue);
     if (event.target.value !== formatted) {
       event.target.value = formatted;
@@ -183,37 +227,20 @@ function handleManualInput(event) {
   }
 }
 
-// Fungsi untuk mengisi input saat tombol pecahan uang diklik
 function setAmount(amount) {
   amountPaid.value = amount;
   formattedAmountPaid.value = new Intl.NumberFormat('id-ID').format(amount);
 }
 
-function showToast(message, type = 'info') {
-  userStore.showNotification(message, type);
-}
-
-onMounted(() => {
-  if (userStore.isReady) fetchProduk();
-});
-watch(() => userStore.isReady, (ready) => {
-  if (ready && produkList.value.length === 0) fetchProduk();
-});
+// --- Lifecycle Hooks ---
+onMounted(() => { if (userStore.isReady) fetchProduk(); });
+watch(() => userStore.isReady, (ready) => { if (ready && produkList.value.length === 0) fetchProduk(); });
 </script>
 
-
 <template>
-  <ReceiptTemplate 
-    ref="receiptComponentRef"
-    :items="keranjang"
-    :total="grandTotal"
-    :organization-name="userStore.organization?.name"
-    :sale-id="lastSaleId"
-  />
-
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 h-[calc(100vh-120px)]">
 
-    <div class="flex flex-col h-full bg-base-100 p-4 rounded-xl shadow">
+    <div class="lg:col-span-2 flex flex-col h-full bg-base-100 p-4 rounded-xl shadow">
       <div class="mb-4">
         <h1 class="text-2xl font-bold">Kasir Penjualan</h1>
         <p class="text-base-content/70 text-sm">Pilih produk untuk ditambahkan ke keranjang.</p>
@@ -285,16 +312,25 @@ watch(() => userStore.isReady, (ready) => {
           </div>
 
           <div v-if="keranjang.length > 0" class="mt-auto pt-4 border-t">
-            <div class="space-y-1 text-sm">
+            <div class="form-control">
+              <label class="label pb-1"><span class="label-text text-xs">Nama Pelanggan (Opsional)</span></label>
+              <input v-model="customerName" type="text" class="input input-sm input-bordered" placeholder="Nama..." />
+            </div>
+            <div class="form-control mt-2">
+              <label class="label pb-1"><span class="label-text text-xs">Nomor HP Pelanggan</span></label>
+              <input v-model="customerPhone" type="tel" class="input input-sm input-bordered" placeholder="62812..." />
+            </div>
+            
+            <div class="space-y-1 text-sm mt-4">
               <div class="flex justify-between"><span>Subtotal</span><span>{{ formatRupiah(subtotal) }}</span></div>
               <div v-if="userStore.activeFeatures.includes('discount_per_trx')" class="flex justify-between items-center">
                 <a @click="fiturBelumTersedia('Diskon per Transaksi')" class="link link-hover text-info">Diskon</a>
                 <span class="text-success">- {{ formatRupiah(totalDiscount) }}</span>
               </div>
-              <div v-if="userStore.activeFeatures.includes('service_charge')" class="flex justify-between">
+              <div v-if="userStore.activeFeatures.includes('service_charge') && userStore.businessProfile?.service_charge_enabled" class="flex justify-between">
                 <span>Biaya Layanan</span><span class="text-error">+ {{ formatRupiah(serviceChargeAmount) }}</span>
               </div>
-              <div v-if="userStore.activeFeatures.includes('tax_ppn')" class="flex justify-between">
+              <div v-if="userStore.activeFeatures.includes('tax_ppn') && userStore.businessProfile?.tax_enabled" class="flex justify-between">
                 <span>PPN (11%)</span><span class="text-error">+ {{ formatRupiah(taxAmount) }}</span>
               </div>
             </div>
@@ -314,11 +350,10 @@ watch(() => userStore.isReady, (ready) => {
     </div>
   </div>
 
-
   <dialog ref="paymentModal" class="modal">
     <div class="modal-box">
       <form method="dialog">
-        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="resetForm">✕</button>
       </form>
       <h3 class="font-bold text-lg">Proses Pembayaran</h3>
       <div class="py-4 space-y-4">
@@ -364,7 +399,7 @@ watch(() => userStore.isReady, (ready) => {
                  @click="setAmount(cash)" 
                  class="btn btn-outline btn-sm"
              >
-                 {{ new Intl.NumberFormat('id-ID').format(cash).replace(/\D/g,'').slice(0,-3) }}000
+                 {{ new Intl.NumberFormat('id-ID').format(cash).replace(/\D/g,'').slice(0,-3) ? new Intl.NumberFormat('id-ID').format(cash).replace(/\D/g,'').slice(0,-3) + 'rb' : new Intl.NumberFormat('id-ID').format(cash) }}
              </button>
            </div>
         </div>
@@ -378,7 +413,7 @@ watch(() => userStore.isReady, (ready) => {
 
       </div>
       <div class="modal-action">
-        <button type="button" class="btn btn-ghost" @click="paymentModal.close()">Batal</button>
+        <button type="button" class="btn btn-ghost" @click="resetForm">Batal</button>
         <button @click="processTransaction" class="btn btn-success" :disabled="isProcessing || totalPaid < grandTotal">
           <span v-if="isProcessing" class="loading loading-spinner"></span>
           Selesaikan & Simpan
