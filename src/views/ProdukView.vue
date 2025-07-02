@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
-import { supabase } from '@/supabase';
+import { supabase } from '@/supabase'; // Masih untuk upload foto
 import { useUserStore } from '@/stores/userStore';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/solid';
 
@@ -26,15 +26,15 @@ const currentProduk = ref({ // State untuk menampung data di form
 
 // --- Fungsi Pengambilan Data ---
 async function fetchProduk() {
-  if (!userStore.organization?.id) return;
   loading.value = true;
   try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('organization_id', userStore.organization.id)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/products`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
     produkList.value = data;
   } catch (error) {
     userStore.showNotification(`Error mengambil produk: ${error.message}`, 'error');
@@ -95,17 +95,26 @@ async function addProduk() {
       fotoUrl = supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
     }
 
-    // 2. Simpan data produk ke database
-    const { error } = await supabase.from('products').insert({
+    // 2. Simpan data produk ke backend API
+    const productData = {
       name: currentProduk.value.name,
       price: currentProduk.value.price,
       cost_price: currentProduk.value.cost_price,
       stock: currentProduk.value.stock,
       foto_url: fotoUrl,
-      organization_id: userStore.organization.id,
-      user_id: userStore.session.user.id,
+    };
+
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/products`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(productData),
     });
-    if (error) throw error;
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
     userStore.showNotification('Produk baru berhasil ditambahkan!', 'info');
     produkModal.value.close();
@@ -130,17 +139,26 @@ async function updateProduk() {
       fotoUrl = supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
     }
 
-    // Update data produk di database
-    const { error } = await supabase.from('products')
-      .update({
-        name: currentProduk.value.name,
-        price: currentProduk.value.price,
-        cost_price: currentProduk.value.cost_price,
-        stock: currentProduk.value.stock,
-        foto_url: fotoUrl,
-      })
-      .eq('id', currentProduk.value.id);
-    if (error) throw error;
+    // Update data produk melalui backend API
+    const productData = {
+      name: currentProduk.value.name,
+      price: currentProduk.value.price,
+      cost_price: currentProduk.value.cost_price,
+      stock: currentProduk.value.stock,
+      foto_url: fotoUrl,
+    };
+
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/products/${currentProduk.value.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(productData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     
     userStore.showNotification('Produk berhasil diperbarui!', 'success');
     produkModal.value.close();
@@ -156,9 +174,14 @@ async function updateProduk() {
 async function hapusProduk(produkId, fotoUrl) {
   if (confirm('Yakin ingin menghapus produk ini?')) {
     try {
-      // Hapus record dari database
-      const { error: deleteError } = await supabase.from('products').delete().eq('id', produkId);
-      if (deleteError) throw deleteError;
+      // Hapus record dari backend API
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/products/${produkId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       // Hapus file foto dari storage jika ada
       if (fotoUrl) {

@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
-import { supabase } from '@/supabase';
 import { useUserStore } from '@/stores/userStore';
 import { PlusIcon, PencilSquareIcon, TrashIcon, EyeIcon } from '@heroicons/vue/24/solid';
 
@@ -28,13 +27,19 @@ async function fetchCustomers() {
   if (!userStore.organization?.id) return;
   loading.value = true;
   try {
-    const { data, error } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('organization_id', userStore.organization.id)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    customers.value = data;
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/customers`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const allCustomers = await response.json();
+    
+    // Filter customers berdasarkan organization_id di frontend
+    customers.value = allCustomers
+      .filter(c => c.organization_id === userStore.organization.id)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
   } catch (error) {
     userStore.showNotification(`Error mengambil data pelanggan: ${error.message}`, 'error');
   } finally {
@@ -75,14 +80,26 @@ async function showCustomerDetails(customer) {
   detailModal.value.showModal();
   
   try {
-    const { data, error } = await supabase
-      .from('sales')
-      .select('id, created_at, total')
-      .eq('customer_id', customer.id)
-      .order('created_at', { ascending: false })
-      .limit(5);
-    if (error) throw error;
-    customerTransactions.value = data;
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/sales`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const allSales = await response.json();
+    
+    // Filter sales berdasarkan customer_id dan ambil 5 terakhir
+    const customerSales = allSales
+      .filter(sale => sale.customer_id === customer.id)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 5)
+      .map(sale => ({
+        id: sale.id,
+        created_at: sale.created_at,
+        total: sale.total
+      }));
+      
+    customerTransactions.value = customerSales;
   } catch (err) {
     userStore.showNotification(`Gagal mengambil riwayat: ${err.message}`, 'error');
   } finally {
@@ -104,12 +121,22 @@ async function addCustomer() {
   }
   isProcessing.value = true;
   try {
-    const { error } = await supabase.from('customers').insert({
-      name: currentCustomer.value.name,
-      phone_number: currentCustomer.value.phone_number.replace(/\D/g, ''),
-      organization_id: userStore.organization.id,
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/customers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: currentCustomer.value.name,
+        phone_number: currentCustomer.value.phone_number.replace(/\D/g, ''),
+        organization_id: userStore.organization.id,
+      }),
     });
-    if (error) throw error;
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     userStore.showNotification('Pelanggan baru berhasil ditambahkan!', 'success');
     customerModal.value.close();
     await fetchCustomers();
@@ -123,13 +150,21 @@ async function addCustomer() {
 async function updateCustomer() {
   isProcessing.value = true;
   try {
-    const { error } = await supabase.from('customers')
-      .update({
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/customers/${currentCustomer.value.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         name: currentCustomer.value.name,
         phone_number: currentCustomer.value.phone_number.replace(/\D/g, ''),
-      })
-      .eq('id', currentCustomer.value.id);
-    if (error) throw error;
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     userStore.showNotification('Data pelanggan berhasil diperbarui!', 'success');
     customerModal.value.close();
     await fetchCustomers();
@@ -143,8 +178,14 @@ async function updateCustomer() {
 async function deleteCustomer(customerId) {
   if (confirm('Yakin ingin menghapus pelanggan ini? Riwayat transaksi mereka tidak akan hilang.')) {
     try {
-      const { error } = await supabase.from('customers').delete().eq('id', customerId);
-      if (error) throw error;
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/customers/${customerId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       userStore.showNotification('Pelanggan berhasil dihapus!', 'success');
       await fetchCustomers();
     } catch (error) {

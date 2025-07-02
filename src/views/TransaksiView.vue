@@ -1,7 +1,6 @@
 <script setup>
 // --- Impor dari Library & Komponen ---
 import { ref, onMounted, computed, watch } from 'vue';
-import { supabase } from '@/supabase';
 import { useUserStore } from '@/stores/userStore';
 import QrcodeVue from 'qrcode.vue';
 import ReceiptTemplate from '@/components/ReceiptTemplate.vue';
@@ -41,19 +40,24 @@ const lastSaleId = ref(null);
 const receiptTemplateRef = ref(null);
 
 // --- Fungsi Pengambilan Data ---
+// Ganti fungsi fetchProduk lama Anda dengan versi baru ini
 async function fetchProduk() {
-  if (!userStore.organization?.id) return;
   loading.value = true;
   try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('id, name, price, foto_url, cost_price')
-      .eq('organization_id', userStore.organization.id)
-      .order('name', { ascending: true });
-    if (error) throw error;
+    // Mengambil data dari API backend lokal kita, bukan lagi Supabase
+    // Pastikan server backend Anda berjalan di port 3000
+   const backendUrl = 'https://opulent-memory-jj4j9pw9v64j2j554-3000.app.github.dev';
+   const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/products`);
+    
+    if (!response.ok) {
+      throw new Error('Gagal terhubung ke server backend Finako.');
+    }
+
+    const data = await response.json();
     produkList.value = data;
+
   } catch (error) {
-    userStore.showNotification(`Error mengambil produk: ${error.message}`, 'error');
+    userStore.showNotification(`Error: ${error.message}`, 'error');
   } finally {
     loading.value = false;
   }
@@ -133,58 +137,83 @@ async function processTransaction() {
       // Membersihkan nomor HP dari karakter selain angka
       const cleanedPhone = customerPhone.value.replace(/\D/g, '');
 
-      const { data: customerData, error: customerError } = await supabase
-        .from('customers')
-        .upsert(
-          { 
-            organization_id: userStore.organization.id,
-            phone_number: cleanedPhone, // Gunakan nomor yang sudah bersih
-            name: customerName.value || cleanedPhone // Jika nama kosong, gunakan no hp sbg nama
-          },
-          { 
-            onConflict: 'organization_id, phone_number', // Kunci unik
-            ignoreDuplicates: false // Pastikan data diupdate jika ada konflik
-          }
-        )
-        .select('id')
-        .single();
-      
-      if (customerError) throw new Error(`Gagal menyimpan data pelanggan: ${customerError.message}`);
-      
-      // Jika berhasil, kita dapatkan ID pelanggannya
+      // Kirim data pelanggan ke backend API
+      const customerResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/customers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          organization_id: userStore.organization.id,
+          phone_number: cleanedPhone,
+          name: customerName.value || cleanedPhone
+        })
+      });
+
+      if (!customerResponse.ok) {
+        throw new Error('Gagal menyimpan data pelanggan');
+      }
+
+      const customerData = await customerResponse.json();
       customerId = customerData.id;
     }
     // --- AKHIR LOGIKA BARU ---
 
-
-    // Proses penyimpanan ke 'sales' dan 'transactions' tetap berjalan
-    const itemsToSave = keranjang.value.map(item => ({ product_id: item.id, name: item.name, price: item.price, quantity: item.quantity, cost_price: item.cost_price }));
+    // Proses penyimpanan ke 'sales' menggunakan backend API
+    const itemsToSave = keranjang.value.map(item => ({ 
+      product_id: item.id, 
+      name: item.name, 
+      price: item.price, 
+      quantity: item.quantity, 
+      cost_price: item.cost_price 
+    }));
     
-    const { data: saleData, error: saleError } = await supabase.from('sales').insert({
-      customer_id: customerId, // <-- Menyimpan ID pelanggan (bisa null jika no hp kosong)
-      customer_phone: customerPhone.value, 
-      customer_name: customerName.value, 
-      total: grandTotal.value, 
-      items: itemsToSave, 
-      organization_id: userStore.organization.id, 
-      user_id: userStore.session.user.id,
-      discount_value: totalDiscount.value, 
-      tax_amount: taxAmount.value, 
-      service_charge_amount: serviceChargeAmount.value, 
-      status: 'completed'
-    }).select().single();
-    if (saleError) throw saleError;
-
-    const { error: transactionError } = await supabase.from('transactions').insert({
-      description: `Penjualan #${saleData.id}`, 
-      amount: grandTotal.value, 
-      type: 'income', 
-      category: 'Penjualan', 
-      organization_id: userStore.organization.id, 
-      user_id: userStore.session.user.id, 
-      sale_id: saleData.id
+    const salesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/sales`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        customer_id: customerId,
+        customer_phone: customerPhone.value,
+        customer_name: customerName.value,
+        total: grandTotal.value,
+        items: itemsToSave,
+        organization_id: userStore.organization.id,
+        user_id: userStore.session.user.id,
+        discount_value: totalDiscount.value,
+        tax_amount: taxAmount.value,
+        service_charge_amount: serviceChargeAmount.value,
+        status: 'completed'
+      })
     });
-    if (transactionError) throw transactionError;
+
+    if (!salesResponse.ok) {
+      throw new Error('Gagal menyimpan data penjualan');
+    }
+
+    const saleData = await salesResponse.json();
+
+    // Simpan ke transactions menggunakan backend API
+    const transactionResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transactions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        description: `Penjualan #${saleData.id}`,
+        amount: grandTotal.value,
+        type: 'income',
+        category: 'Penjualan',
+        organization_id: userStore.organization.id,
+        user_id: userStore.session.user.id,
+        sale_id: saleData.id
+      })
+    });
+
+    if (!transactionResponse.ok) {
+      throw new Error('Gagal menyimpan riwayat transaksi');
+    }
     
     userStore.showNotification('Transaksi berhasil disimpan!', 'success');
     paymentModal.value.close();

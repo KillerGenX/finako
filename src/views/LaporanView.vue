@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
-import { supabase } from '@/supabase';
 import { useUserStore } from '@/stores/userStore';
 import { ArrowPathIcon } from '@heroicons/vue/24/solid';
 
@@ -18,19 +17,26 @@ async function fetchSalesReport() {
   
   loading.value = true;
   try {
-    // Tambahkan jam 23:59:59 ke tanggal akhir agar mencakup semua transaksi di hari itu
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/sales`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const allSalesData = await response.json();
+    
+    // Filter data berdasarkan tanggal di frontend (karena belum ada query parameter di backend)
     const endOfDay = `${endDate.value}T23:59:59`;
-
-    const { data, error } = await supabase
-      .from('sales')
-      .select('*')
-      .eq('organization_id', userStore.organization.id)
-      .gte('created_at', startDate.value)
-      .lte('created_at', endOfDay)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    salesData.value = data;
+    const startDateTime = new Date(startDate.value);
+    const endDateTime = new Date(endOfDay);
+    
+    const filteredData = allSalesData.filter(sale => {
+      const saleDate = new Date(sale.created_at);
+      return saleDate >= startDateTime && saleDate <= endDateTime;
+    });
+    
+    salesData.value = filteredData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
   } catch (error) {
     userStore.showNotification(`Error mengambil laporan: ${error.message}`, 'error');
   } finally {
@@ -49,7 +55,11 @@ const summary = computed(() => {
   
   // Kalkulasi profit membutuhkan harga modal dari 'items'
   const totalCost = salesData.value.reduce((sum, sale) => {
-    const itemsCost = sale.items.reduce((itemSum, item) => itemSum + ((item.cost_price || 0) * item.quantity), 0);
+    if (!sale.items || !Array.isArray(sale.items)) return sum;
+    
+    const itemsCost = sale.items.reduce((itemSum, item) => {
+      return itemSum + ((item.cost_price || 0) * (item.quantity || 0));
+    }, 0);
     return sum + itemsCost;
   }, 0);
   

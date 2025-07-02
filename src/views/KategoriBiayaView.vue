@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
-import { supabase } from '@/supabase';
 import { useUserStore } from '@/stores/userStore';
 import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/solid';
 
@@ -22,12 +21,13 @@ async function getCategories() {
   if (!userStore.organization?.id) return;
   loading.value = true;
   try {
-    const { data, error } = await supabase
-      .from('expense_categories')
-      .select('id, name, created_at')
-      .eq('organization_id', userStore.organization.id)
-      .order('name', { ascending: true });
-    if (error) throw error;
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/expense-categories`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
     categories.value = data;
   } catch (error) {
     userStore.showNotification(`Error mengambil kategori: ${error.message}`, 'error');
@@ -74,12 +74,21 @@ async function addCategory() {
   }
   isProcessing.value = true;
   try {
-    const { error } = await supabase.from('expense_categories').insert({
-      name: currentCategory.value.name,
-      organization_id: userStore.organization.id,
-      user_id: userStore.session.user.id,
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/expense-categories`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: currentCategory.value.name,
+        organization_id: userStore.organization.id,
+        user_id: userStore.session.user.id,
+      }),
     });
-    if (error) throw error;
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
     userStore.showNotification(`Kategori '${currentCategory.value.name}' berhasil ditambahkan!`, 'success');
     categoryModal.value.close();
@@ -94,10 +103,19 @@ async function addCategory() {
 async function updateCategory() {
   isProcessing.value = true;
   try {
-    const { error } = await supabase.from('expense_categories')
-      .update({ name: currentCategory.value.name })
-      .eq('id', currentCategory.value.id);
-    if (error) throw error;
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/expense-categories/${currentCategory.value.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: currentCategory.value.name,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     
     userStore.showNotification('Kategori berhasil diperbarui!', 'success');
     categoryModal.value.close();
@@ -112,11 +130,13 @@ async function updateCategory() {
 async function deleteCategory(categoryId, categoryName) {
   if (confirm(`Yakin ingin menghapus kategori '${categoryName}'? Ini mungkin mempengaruhi data transaksi lama.`)) {
     try {
-      // Kita set foreign key menjadi NULL, bukan menghapus transaksi
-      await supabase.from('transactions').update({ expense_category_id: null }).eq('expense_category_id', categoryId);
-      // Baru hapus kategori
-      const { error: deleteError } = await supabase.from('expense_categories').delete().eq('id', categoryId);
-      if (deleteError) throw deleteError;
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/expense-categories/${categoryId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
       userStore.showNotification('Kategori berhasil dihapus!', 'success');
       await getCategories();

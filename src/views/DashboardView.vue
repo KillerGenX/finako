@@ -1,7 +1,6 @@
 <script setup>
 // --- Impor dari Library ---
 import { ref, onMounted, computed, watch } from "vue";
-import { supabase } from "@/supabase";
 import { useUserStore } from "@/stores/userStore";
 import SalesChart from '@/components/SalesChart.vue';
 
@@ -123,9 +122,10 @@ async function fetchAllDashboardData() {
   try {
     await Promise.all([
       getAllTransactions(), 
-      getBusinessProfile(),
-      fetchSalesDataForChart(),
       getSalesWithItems()
+      // TODO: Tambahkan kembali setelah endpoint ready:
+      // getBusinessProfile(),
+      // fetchSalesDataForChart(),
     ]);
   } catch (error) {
     console.error("Terjadi error saat mengambil data dashboard:", error);
@@ -136,36 +136,65 @@ async function fetchAllDashboardData() {
 }
 
 async function getAllTransactions() {
-  const { data, error } = await supabase.from("transactions").select("*").eq('organization_id', userStore.organization.id).order("created_at", { ascending: false });
-  if (error) throw error;
-  if (data) allTransactions.value = data;
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transactions`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    allTransactions.value = data;
+  } catch (error) {
+    throw error;
+  }
 }
 
 // Fungsi baru untuk mengambil data dari tabel 'sales'
 async function getSalesWithItems() {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-  const { data, error } = await supabase
-    .from('sales')
-    .select('items')
-    .eq('organization_id', userStore.organization.id)
-    .gte('created_at', startOfMonth);
-
-  if (error) throw error;
-  if (data) salesWithItems.value = data;
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/sales`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Filter data bulan ini di frontend untuk sementara
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    const filteredData = data.filter(sale => 
+      new Date(sale.created_at) >= startOfMonth
+    );
+    
+    salesWithItems.value = filteredData;
+  } catch (error) {
+    throw error;
+  }
 }
 
+// TODO: Migrasi setelah endpoint ready
 async function getBusinessProfile() {
-  const { data, error } = await supabase.from("business_profiles").select("*").eq('organization_id', userStore.organization.id).single();
-  if (error && error.code !== "PGRST116") throw error;
-  if (data) businessProfile.value = data;
+  // Sementara set null agar tidak error
+  businessProfile.value = null;
+  
+  // Original Supabase code (commented):
+  // const { data, error } = await supabase.from("business_profiles").select("*").eq('organization_id', userStore.organization.id).single();
+  // if (error && error.code !== "PGRST116") throw error;
+  // if (data) businessProfile.value = data;
 }
 
+// TODO: Migrasi setelah endpoint ready
 async function fetchSalesDataForChart() {
-  const { data, error } = await supabase.rpc('get_daily_sales_last_7_days', { org_id: userStore.organization.id });
-  if (error) throw error;
-  if (data) salesDataLast7Days.value = data;
+  // Sementara set empty array agar tidak error
+  salesDataLast7Days.value = [];
+  
+  // Original Supabase code (commented):
+  // const { data, error } = await supabase.rpc('get_daily_sales_last_7_days', { org_id: userStore.organization.id });
+  // if (error) throw error;
+  // if (data) salesDataLast7Days.value = data;
 }
 
 // --- Lifecycle Hooks ---
