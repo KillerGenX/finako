@@ -122,10 +122,9 @@ async function fetchAllDashboardData() {
   try {
     await Promise.all([
       getAllTransactions(), 
-      getSalesWithItems()
-      // TODO: Tambahkan kembali setelah endpoint ready:
+      getSalesWithItems(),
+      fetchSalesDataForChart()
       // getBusinessProfile(),
-      // fetchSalesDataForChart(),
     ]);
   } catch (error) {
     console.error("Terjadi error saat mengambil data dashboard:", error);
@@ -144,7 +143,11 @@ async function getAllTransactions() {
     }
     
     const data = await response.json();
-    allTransactions.value = data;
+    // Mapping agar selalu ada field created_at untuk kebutuhan frontend
+    allTransactions.value = data.map(tx => ({
+      ...tx,
+      created_at: tx.created_at || tx.date // fallback ke date jika created_at tidak ada
+    }));
   } catch (error) {
     throw error;
   }
@@ -169,7 +172,11 @@ async function getSalesWithItems() {
       new Date(sale.created_at) >= startOfMonth
     );
     
-    salesWithItems.value = filteredData;
+    // Mapping agar selalu ada field created_at
+    salesWithItems.value = filteredData.map(sale => ({
+      ...sale,
+      created_at: sale.created_at || sale.date
+    }));
   } catch (error) {
     throw error;
   }
@@ -186,15 +193,21 @@ async function getBusinessProfile() {
   // if (data) businessProfile.value = data;
 }
 
-// TODO: Migrasi setelah endpoint ready
+
+// Ambil data penjualan 7 hari terakhir dari backend
 async function fetchSalesDataForChart() {
-  // Sementara set empty array agar tidak error
-  salesDataLast7Days.value = [];
-  
-  // Original Supabase code (commented):
-  // const { data, error } = await supabase.rpc('get_daily_sales_last_7_days', { org_id: userStore.organization.id });
-  // if (error) throw error;
-  // if (data) salesDataLast7Days.value = data;
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/dashboard`);
+    if (!response.ok) throw new Error('Gagal mengambil data dashboard');
+    const data = await response.json();
+    // Mapping agar selalu ada field sale_day
+    salesDataLast7Days.value = (data.sales_last_7_days || []).map(item => ({
+      ...item,
+      sale_day: item.sale_day || item.date
+    }));
+  } catch (error) {
+    salesDataLast7Days.value = [];
+  }
 }
 
 // --- Lifecycle Hooks ---

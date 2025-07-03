@@ -46,7 +46,7 @@ async function fetchProduk() {
   try {
     // Mengambil data dari API backend lokal kita, bukan lagi Supabase
     // Pastikan server backend Anda berjalan di port 3000
-   const backendUrl = 'https://opulent-memory-jj4j9pw9v64j2j554-3000.app.github.dev';
+   const backendUrl = 'https://shiny-spoon-q79765g6jw6ghxpjg-3000.app.github.dev';
    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/products`);
     
     if (!response.ok) {
