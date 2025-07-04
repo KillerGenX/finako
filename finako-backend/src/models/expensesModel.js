@@ -1,29 +1,60 @@
 const db = require('./db');
 
-exports.getAll = async (organization_id) => {
-  if (!organization_id) return [];
+exports.getAll = async (organizationId) => {
   const { data, error } = await db.from('expenses')
     .select('*, expense_categories(name)')
-    .eq('organization_id', organization_id)
+    .eq('organization_id', organizationId)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data;
 };
 
+exports.getById = async (id, organizationId) => {
+  const { data, error } = await db.from('expenses')
+    .select('*, expense_categories(name)')
+    .eq('id', id)
+    .eq('organization_id', organizationId)
+    .single();
+  if (error) {
+    if (error.code === 'PGRST116') return null; // Not found
+    throw error;
+  }
+  return data;
+};
+
 exports.create = async (expense) => {
-  const { data, error } = await db.from('expenses').insert([expense]).select().single();
+  const { data, error } = await db.from('expenses')
+    .insert([expense])
+    .select()
+    .single();
   if (error) throw error;
   return data;
 };
 
-exports.update = async (id, expense) => {
-  const { data, error } = await db.from('expenses').update(expense).eq('id', id).select().single();
-  if (error) throw error;
+exports.update = async (id, updates, organizationId) => {
+  const { data, error } = await db.from('expenses')
+    .update(updates)
+    .eq('id', id)
+    .eq('organization_id', organizationId)
+    .select()
+    .single();
+  if (error) {
+    if (error.code === 'PGRST116') return null; // Not found
+    throw error;
+  }
   return data;
 };
 
-exports.remove = async (id, organization_id) => {
-  const { error } = await db.from('expenses').delete().eq('id', id).eq('organization_id', organization_id);
-  if (error) throw error;
-  return true;
+exports.remove = async (id, organizationId) => {
+  const { data, error } = await db.from('expenses')
+    .delete()
+    .eq('id', id)
+    .eq('organization_id', organizationId)
+    .select()
+    .single();
+  if (error) {
+    if (error.code === 'PGRST116') return null; // Not found
+    throw error;
+  }
+  return data;
 };
