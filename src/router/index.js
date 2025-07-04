@@ -1,7 +1,8 @@
-// File: src/router/index.js (FINAL DENGAN PENAMAAN INDONESIA YANG BENAR)
+// File: src/router/index.js - Enhanced Multi-Tenant Router
 
 import { createRouter, createWebHistory } from 'vue-router';
 import { useUserStore } from '@/stores/userStore';
+import apiService from '@/services/api';
 
 // --- Impor Komponen dengan Nama File yang Sudah Benar ---
 import LayoutAuthenticated from '@/layouts/LayoutAuthenticated.vue';
@@ -86,24 +87,24 @@ const router = createRouter({
   linkActiveClass: 'active',
 });
 
-// --- Navigation Guard dengan Alur SaaS Multi-Tenant ---
+// --- Enhanced Navigation Guard dengan Multi-Tenant Validation ---
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore();
 
-  // Fetch user profile jika belum ready
+  // Initialize user profile if not ready
   if (!userStore.isReady) {
     try {
-      console.log('Fetching user profile...');
-      // Tambahkan timeout untuk menghindari hang
+      console.log('🔄 Initializing user profile...');
       await Promise.race([
         userStore.fetchUserProfile(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Profile fetch timeout')), 15000)
+        )
       ]);
-      console.log('User profile fetched successfully');
+      console.log('✅ User profile initialized successfully');
     } catch (error) {
-      console.error('fetchUserProfile error:', error);
-      // Jika error, set ready true dan lanjutkan ke login
-      userStore.isReady = true;
+      console.error('❌ Profile initialization error:', error);
+      userStore.isReady = true; // Prevent infinite loop
     }
   }
 
@@ -113,72 +114,155 @@ router.beforeEach(async (to, from, next) => {
   const organization = userStore.organization;
   const businessProfile = userStore.businessProfile;
 
-  // Debug logs
-  console.log('Navigation Guard Debug:', {
+  // Enhanced debug logs
+  console.log('🔍 Navigation Guard Debug:', {
     to: to.name,
+    from: from.name,
     isLoggedIn,
+    hasValidMembership: userStore.hasValidMembership,
+    organizationId: userStore.organizationId,
     organizationStatus: organization?.status,
     hasBusinessProfile: !!businessProfile,
-    userRole
+    userRole,
+    activeFeatures: activeFeatures.slice(0, 3) // Show first 3 features
   });
 
-  // Jika route memerlukan auth dan user belum login
+  // Public routes that don't require auth
+  const publicRoutes = ['Login', 'Register', 'PaymentInfo', 'Test', 'NotFound'];
+  const isPublicRoute = publicRoutes.includes(to.name);
+
+  // Enhanced authentication check
   if (to.meta.requiresAuth && !isLoggedIn) {
-    console.log('Redirecting to Login: Not authenticated');
-    return next({ name: 'Login' });
+    console.log('🔒 Redirecting to Login: Authentication required');
+    return next({ 
+      name: 'Login', 
+      query: { redirect: to.fullPath } // Save intended destination
+    });
   }
 
-  // Jika user sudah login dan akses halaman login
+  // Enhanced multi-tenant organization validation
+  if (isLoggedIn && to.meta.requiresAuth) {
+    try {
+      // Validate organization membership
+      if (!userStore.hasValidMembership) {
+        console.log('⚠️ Invalid membership detected');
+        userStore.showNotification('Akses organisasi tidak valid. Silakan login ulang.', 'error');
+        await userStore.logout();
+        return next({ name: 'Login' });
+      }
+
+      // Validate organization status
+      if (organization?.status === 'suspended') {
+        console.log('🚫 Organization suspended');
+        userStore.showNotification('Organisasi Anda telah disuspend. Hubungi support.', 'error');
+        return next({ name: 'Login' });
+      }
+
+      if (organization?.status === 'deleted') {
+        console.log('🗑️ Organization deleted');
+        userStore.showNotification('Organisasi Anda telah dihapus.', 'error');
+        await userStore.logout();
+        return next({ name: 'Login' });
+      }
+
+    } catch (error) {
+      console.error('❌ Organization validation error:', error);
+      userStore.showNotification('Error validasi organisasi', 'error');
+      return next({ name: 'Login' });
+    }
+  }
+
+  // Handle logged-in user accessing login page
   if (to.name === 'Login' && isLoggedIn) {
-    // Cek status organization untuk redirect yang tepat
+    const redirect = to.query.redirect;
+    
+    // Check organization flow
     if (organization?.status === 'pending') {
-      console.log('Redirecting to PaymentInfo: Organization status pending');
+      console.log('💳 Redirecting to PaymentInfo: Organization pending');
       return next({ name: 'PaymentInfo' });
-    } else if (organization?.status === 'active' && !businessProfile) {
-      console.log('Redirecting to Onboarding: Organization active but no business profile');
+    } 
+    
+    if (organization?.status === 'active' && !businessProfile) {
+      console.log('⚙️ Redirecting to Onboarding: Setup required');
       return next({ name: 'Onboarding' });
     }
-    console.log('Redirecting to Dashboard/Transaksi: Normal login flow');
-    return userRole === 'owner' ? next({ name: 'Dashboard' }) : next({ name: 'Transaksi' });
+    
+    // Redirect to intended destination or default based on role
+    const defaultRoute = userRole === 'owner' ? { name: 'Dashboard' } : { name: 'Transaksi' };
+    const destination = redirect ? { path: redirect } : defaultRoute;
+    
+    console.log('🏠 Redirecting to:', destination);
+    return next(destination);
   }
 
-  // Logic untuk tenant dengan organization status pending
-  if (isLoggedIn && organization?.status === 'pending' && to.name !== 'PaymentInfo') {
-    console.log('Redirecting to PaymentInfo: Organization still pending');
-    return next({ name: 'PaymentInfo' });
+  // Multi-tenant organization flow validation
+  if (isLoggedIn && organization) {
+    // Pending payment flow
+    if (organization.status === 'pending' && to.name !== 'PaymentInfo') {
+      console.log('💳 Enforcing payment info: Organization pending');
+      return next({ name: 'PaymentInfo' });
+    }
+
+    // Onboarding flow
+    if (organization.status === 'active' && !businessProfile && to.name !== 'Onboarding') {
+      console.log('⚙️ Enforcing onboarding: Business profile required');
+      return next({ name: 'Onboarding' });
+    }
+
+    // Prevent accessing onboarding when already completed
+    if (organization.status === 'active' && businessProfile && to.name === 'Onboarding') {
+      console.log('✅ Onboarding already completed, redirecting');
+      const defaultRoute = userRole === 'owner' ? { name: 'Dashboard' } : { name: 'Transaksi' };
+      return next(defaultRoute);
+    }
   }
 
-  // Logic untuk tenant dengan organization status active tapi belum setup business_profile
-  if (isLoggedIn && organization?.status === 'active' && !businessProfile && to.name !== 'Onboarding') {
-    console.log('Redirecting to Onboarding: Need to setup business profile');
-    return next({ name: 'Onboarding' });
-  }
-
-  // ✅ NEW: Logic untuk tenant yang sudah punya business profile
-  if (isLoggedIn && organization?.status === 'active' && businessProfile && to.name === 'Onboarding') {
-    console.log('Redirecting to Dashboard: Business profile already exists');
-    return userRole === 'owner' ? next({ name: 'Dashboard' }) : next({ name: 'Transaksi' });
-  }
-
-  // Cek role dan feature access untuk protected routes
+  // Enhanced role-based access control
   if (to.meta.requiresAuth && isLoggedIn) {
     const requiredRoles = to.meta.roles;
-    if (requiredRoles && !requiredRoles.includes(userRole)) {
-      console.log('Redirecting: Insufficient role access');
-      return userRole === 'owner' ? next({ name: 'Dashboard' }) : next({ name: 'Transaksi' });
+    if (requiredRoles && !userStore.hasRole(requiredRoles[0])) {
+      console.log('🚫 Access denied: Insufficient role');
+      userStore.showNotification('Akses tidak diizinkan untuk role Anda', 'error');
+      const fallbackRoute = userRole === 'owner' ? { name: 'Dashboard' } : { name: 'Transaksi' };
+      return next(fallbackRoute);
     }
     
+    // Enhanced feature-based access control
     const requiredFeatures = to.meta.features;
     if (requiredFeatures) {
-      const hasAccess = requiredFeatures.every(feature => activeFeatures.includes(feature));
-      if (!hasAccess) {
-        console.log('Redirecting: Insufficient feature access');
-        return userRole === 'owner' ? next({ name: 'Dashboard' }) : next({ name: 'Transaksi' });
+      const hasFeatureAccess = requiredFeatures.every(feature => userStore.hasFeature(feature));
+      if (!hasFeatureAccess) {
+        console.log('🚫 Access denied: Missing required features:', requiredFeatures);
+        userStore.showNotification('Fitur tidak tersedia dalam paket Anda', 'error');
+        const fallbackRoute = userRole === 'owner' ? { name: 'Dashboard' } : { name: 'Transaksi' };
+        return next(fallbackRoute);
       }
     }
   }
 
-  console.log('Navigation allowed to:', to.name);
+  // Health check for protected routes (optional)
+  if (to.meta.requiresAuth && isLoggedIn && to.name !== 'Test') {
+    try {
+      // Periodic API health check (every 10 minutes)
+      const lastHealthCheck = localStorage.getItem('lastHealthCheck');
+      const now = Date.now();
+      if (!lastHealthCheck || (now - parseInt(lastHealthCheck)) > 600000) {
+        apiService.healthCheck()
+          .then(() => {
+            localStorage.setItem('lastHealthCheck', now.toString());
+          })
+          .catch(error => {
+            console.warn('⚠️ API health check failed:', error);
+            // Don't block navigation, just log
+          });
+      }
+    } catch (error) {
+      console.warn('⚠️ Health check error:', error);
+      // Don't block navigation
+    }
+  }
+
+  console.log('✅ Navigation allowed to:', to.name);
   return next();
 });
 
