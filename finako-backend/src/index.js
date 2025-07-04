@@ -1,8 +1,15 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Initialize Supabase client with service key
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 // CORS configuration with more specific options
 app.use(cors({
@@ -14,6 +21,37 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 app.use(express.json());
+
+// Import register controller
+const { createTenant } = require('./controllers/registerController');
+
+// Register route
+app.post('/api/register', createTenant);
+
+// Business profile endpoint (bypass RLS)
+app.get('/api/business-profile/:organizationId', async (req, res) => {
+  try {
+    const { organizationId } = req.params;
+    console.log('Fetching business profile for organization:', organizationId);
+    
+    const { data, error } = await supabase
+      .from('business_profiles')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching business profile:', error);
+      throw error;
+    }
+    
+    console.log('Business profile result:', data ? 'Found' : 'Not found');
+    res.json({ data: data || null });
+  } catch (err) {
+    console.error('Business profile endpoint error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // --- DATABASE SEMENTARA (DUMMY) ---
 let dummyProducts = [

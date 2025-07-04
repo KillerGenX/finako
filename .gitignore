@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Environment files - JANGAN COMMIT credentials asli
+.env
+finako-backend/.env
+*.env.local
+*.env.production

@@ -43,14 +43,24 @@ async function handleLogin() {
     // selesai diambil dan disimpan di store.
     await userStore.fetchUserProfile();
 
-    // Setelah semua data siap di store, baru arahkan pengguna ke halaman utama.
-    router.push("/");
+    // Jika status organisasi belum active, redirect ke payment-info
+    if (userStore.organization && userStore.organization.status && userStore.organization.status !== 'active') {
+      router.push('/payment-info');
+      return;
+    }
+
+    // Jika organisasi active tapi belum ada business profile, redirect ke onboarding
+    if (userStore.organization && userStore.organization.status === 'active' && !userStore.businessProfile) {
+      router.push('/onboarding');
+      return;
+    }
+
     // Setelah semua data siap di store, baru arahkan pengguna sesuai role
-if (userStore.userRole === 'pegawai') {
-  router.push("/penjualan");
-} else {
-  router.push("/");
-}
+    if (userStore.userRole === 'pegawai') {
+      router.push("/transaksi");
+    } else {
+      router.push("/");
+    }
 
   } catch (error) {
     // Jika terjadi error, tampilkan pesannya ke pengguna
@@ -89,6 +99,10 @@ if (userStore.userRole === 'pegawai') {
         </div>
 
         <p v-if="message" class="text-center text-error mt-4">{{ message }}</p>
+        <div class="text-center mt-4">
+          <span>Belum punya akun? </span>
+          <router-link to="/register" class="btn btn-link text-primary">Daftar Tenant Baru</router-link>
+        </div>
       </div>
     </div>
   </div>

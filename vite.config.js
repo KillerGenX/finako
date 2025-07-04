@@ -15,5 +15,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // Note: Menggunakan VITE_API_BASE_URL environment variable untuk API calls
+  // Tidak perlu proxy karena sudah ada environment variable
   // --- SAMPAI SINI ---
 })
