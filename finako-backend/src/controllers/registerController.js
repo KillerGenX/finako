@@ -49,14 +49,14 @@ exports.createTenant = async (req, res, next) => {
       throw profileError;
     }
 
-    // 3. Insert ke organizations
+    // 3. Insert ke organizations dengan status pending
     const { data: orgData, error: orgError } = await supabase
       .from('organizations')
       .insert({
         name: businessName,
         owner_id: user.id,
         package_id: packageId,
-        status: 'active' // Langsung active untuk SaaS flow
+        status: 'pending' // Status pending untuk admin approval flow
       })
       .select()
       .single();
@@ -72,8 +72,8 @@ exports.createTenant = async (req, res, next) => {
     const { error: memberError } = await supabase.from('organization_members').insert({
       organization_id: orgData.id,
       user_id: user.id,
-      role: 'owner',
-      status: 'active'
+      role: 'owner'
+      // Remove status field - tidak ada di schema
     });
 
     if (memberError) {
@@ -109,10 +109,11 @@ exports.createTenant = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Registrasi tenant berhasil',
+      message: 'Registrasi tenant berhasil. Menunggu approval admin.',
       data: {
         user_id: user.id,
-        organization: orgData
+        organization: orgData,
+        next_step: 'payment_info'
       }
     });
 

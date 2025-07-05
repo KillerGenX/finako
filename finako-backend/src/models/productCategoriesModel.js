@@ -1,34 +1,21 @@
-// src/models/productsModel.js
 const supabase = require('./db');
 
-// Get all products for specific organization with category info
+// Get all product categories for specific organization
 exports.getAll = async (organizationId) => {
   const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      product_categories(
-        id,
-        name
-      )
-    `)
+    .from('product_categories')
+    .select('*')
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data;
 };
 
-// Get product by ID for specific organization with category info
+// Get product category by ID for specific organization
 exports.getById = async (id, organizationId) => {
   const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      product_categories(
-        id,
-        name
-      )
-    `)
+    .from('product_categories')
+    .select('*')
     .eq('id', id)
     .eq('organization_id', organizationId)
     .single();
@@ -36,48 +23,44 @@ exports.getById = async (id, organizationId) => {
   return data;
 };
 
-// Create new product
-exports.create = async (product, organizationId) => {
-  const productData = {
-    ...product,
-    organization_id: organizationId,
+// Create new product category
+exports.create = async (category) => {
+  const categoryData = {
+    ...category,
     created_at: new Date().toISOString()
   };
   
   const { data, error } = await supabase
-    .from('products')
-    .insert([productData])
+    .from('product_categories')
+    .insert([categoryData])
     .select()
     .single();
   if (error) throw error;
   return data;
 };
 
-// Update product
+// Update product category
 exports.update = async (id, updates, organizationId) => {
   const { data, error } = await supabase
-    .from('products')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString()
-    })
+    .from('product_categories')
+    .update(updates)
     .eq('id', id)
     .eq('organization_id', organizationId)
     .select()
     .single();
-  if (error) throw error;
+  if (error && error.code !== 'PGRST116') throw error;
   return data;
 };
 
-// Delete product
+// Delete product category
 exports.remove = async (id, organizationId) => {
   const { data, error } = await supabase
-    .from('products')
+    .from('product_categories')
     .delete()
     .eq('id', id)
     .eq('organization_id', organizationId)
     .select()
     .single();
-  if (error) throw error;
+  if (error && error.code !== 'PGRST116') throw error;
   return data;
 };

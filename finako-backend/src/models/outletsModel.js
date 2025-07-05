@@ -1,34 +1,21 @@
-// src/models/productsModel.js
 const supabase = require('./db');
 
-// Get all products for specific organization with category info
+// Get all outlets for specific organization
 exports.getAll = async (organizationId) => {
   const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      product_categories(
-        id,
-        name
-      )
-    `)
+    .from('outlets')
+    .select('*')
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data;
 };
 
-// Get product by ID for specific organization with category info
+// Get outlet by ID for specific organization
 exports.getById = async (id, organizationId) => {
   const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      product_categories(
-        id,
-        name
-      )
-    `)
+    .from('outlets')
+    .select('*')
     .eq('id', id)
     .eq('organization_id', organizationId)
     .single();
@@ -36,48 +23,44 @@ exports.getById = async (id, organizationId) => {
   return data;
 };
 
-// Create new product
-exports.create = async (product, organizationId) => {
-  const productData = {
-    ...product,
-    organization_id: organizationId,
+// Create new outlet
+exports.create = async (outlet) => {
+  const outletData = {
+    ...outlet,
     created_at: new Date().toISOString()
   };
   
   const { data, error } = await supabase
-    .from('products')
-    .insert([productData])
+    .from('outlets')
+    .insert([outletData])
     .select()
     .single();
   if (error) throw error;
   return data;
 };
 
-// Update product
+// Update outlet
 exports.update = async (id, updates, organizationId) => {
   const { data, error } = await supabase
-    .from('products')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString()
-    })
+    .from('outlets')
+    .update(updates)
     .eq('id', id)
     .eq('organization_id', organizationId)
     .select()
     .single();
-  if (error) throw error;
+  if (error && error.code !== 'PGRST116') throw error;
   return data;
 };
 
-// Delete product
+// Delete outlet
 exports.remove = async (id, organizationId) => {
   const { data, error } = await supabase
-    .from('products')
+    .from('outlets')
     .delete()
     .eq('id', id)
     .eq('organization_id', organizationId)
     .select()
     .single();
-  if (error) throw error;
+  if (error && error.code !== 'PGRST116') throw error;
   return data;
 };

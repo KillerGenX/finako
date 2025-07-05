@@ -38,6 +38,17 @@ const dashboardRoutes = require('./routes/dashboard');
 const transactionsRoutes = require('./routes/transactions');
 const stocksRoutes = require('./routes/stocks');
 
+// New enhanced routes
+const productCategoriesRoutes = require('./routes/productCategories');
+const businessProfilesRoutes = require('./routes/businessProfiles');
+const outletsRoutes = require('./routes/outlets');
+const organizationFeaturesRoutes = require('./routes/organizationFeatures');
+const usersRoutes = require('./routes/users');
+
+// Auth & Admin routes
+const authRoutes = require('./routes/auth');
+const onboardingRoutes = require('./routes/onboarding');
+
 // Health check endpoint
 app.get('/', (req, res) => {
   res.json({
@@ -104,6 +115,17 @@ app.use('/api/expense-categories', validateMembership, expenseCategoriesRoutes);
 app.use('/api/dashboard', validateMembership, dashboardRoutes);
 app.use('/api/transactions', validateMembership, transactionsRoutes);
 app.use('/api/stocks', validateMembership, stocksRoutes);
+
+// Enhanced routes
+app.use('/api/product-categories', validateMembership, productCategoriesRoutes);
+app.use('/api/business-profile', validateMembership, businessProfilesRoutes);
+app.use('/api/outlets', validateMembership, outletsRoutes);
+app.use('/api/organization-features', validateMembership, organizationFeaturesRoutes);
+app.use('/api/users', validateMembership, usersRoutes);
+
+// Auth & Onboarding routes (no validateMembership needed)
+app.use('/api/auth', authRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
