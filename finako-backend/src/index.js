@@ -67,6 +67,16 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Test POST endpoint
+app.post('/api/test', (req, res) => {
+  console.log('🧪 Test POST received:', req.body);
+  res.json({
+    message: 'Test POST successful',
+    body: req.body,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Debug endpoint untuk cek organization_members
 app.get('/api/debug/members/:organizationId/:userId', async (req, res) => {
   try {

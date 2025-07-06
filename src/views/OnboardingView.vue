@@ -1,227 +1,297 @@
 <template>
-  <div class="min-h-screen bg-base-200 p-4">
-    <div class="max-w-2xl mx-auto">
-      <!-- Progress Steps -->
-      <div class="mb-8">
-        <ul class="steps w-full">
-          <li class="step" :class="{ 'step-primary': currentStep >= 1 }">Profil Bisnis</li>
-          <li class="step" :class="{ 'step-primary': currentStep >= 2 }">Outlet Utama</li>
-          <li class="step" :class="{ 'step-primary': currentStep >= 3 }">Konfigurasi</li>
-          <li class="step" :class="{ 'step-primary': currentStep >= 4 }">Selesai</li>
-        </ul>
+  <div class="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center px-4">
+    <div class="max-w-2xl w-full space-y-8">
+      <!-- Header -->
+      <div class="text-center">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">
+          Setup Bisnis Anda
+        </h1>
+        <p class="text-gray-600">
+          Lengkapi informasi bisnis untuk mulai menggunakan Finako
+        </p>
       </div>
 
-      <!-- Step Content -->
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <!-- Step 1: Business Profile -->
-          <div v-if="currentStep === 1">
-            <h2 class="card-title mb-4">Profil Bisnis Anda</h2>
-            <p class="mb-6 text-base-content/70">Masukkan informasi dasar tentang bisnis Anda</p>
+      <!-- Progress Bar -->
+      <div class="bg-white rounded-lg shadow-sm p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-purple-600">Langkah {{ currentStep }} dari {{ totalSteps }}</span>
+          <span class="text-sm text-gray-500">{{ Math.round((currentStep / totalSteps) * 100) }}% selesai</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            class="bg-purple-600 h-2 rounded-full transition-all duration-300"
+            :style="{ width: `${(currentStep / totalSteps) * 100}%` }"
+          ></div>
+        </div>
+      </div>
+
+      <!-- Onboarding Form -->
+      <div class="bg-white rounded-lg shadow-xl p-8">
+        <form @submit.prevent="handleSubmit" class="space-y-6">
+          
+          <!-- Step 1: Business Information -->
+          <div v-if="currentStep === 1" class="space-y-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Informasi Bisnis</h2>
             
-            <div class="space-y-4">
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">Nama Bisnis</span>
+            <div class="grid grid-cols-1 gap-6">
+              <div>
+                <label for="businessName" class="block text-sm font-medium text-gray-700 mb-2">
+                  Nama Bisnis *
                 </label>
-                <input 
-                  type="text" 
-                  v-model="businessData.businessName"
-                  class="input input-bordered" 
-                  placeholder="Contoh: Toko Kelontong Bahagia"
-                  required 
+                <input
+                  id="businessName"
+                  v-model="form.business_name"
+                  type="text"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="PT. Nama Perusahaan"
+                  :disabled="isLoading"
                 />
               </div>
-              
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">Jenis Bisnis</span>
+
+              <div>
+                <label for="businessAddress" class="block text-sm font-medium text-gray-700 mb-2">
+                  Alamat Bisnis *
                 </label>
-                <select v-model="businessData.businessType" class="select select-bordered">
-                  <option value="">Pilih jenis bisnis</option>
-                  <option value="retail">Retail/Toko</option>
-                  <option value="fnb">Food & Beverage</option>
-                  <option value="service">Jasa</option>
-                  <option value="wholesale">Grosir</option>
-                  <option value="other">Lainnya</option>
-                </select>
-              </div>
-              
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">Alamat Bisnis</span>
-                </label>
-                <textarea 
-                  v-model="businessData.businessAddress"
-                  class="textarea textarea-bordered" 
-                  placeholder="Alamat lengkap bisnis Anda"
+                <textarea
+                  id="businessAddress"
+                  v-model="form.business_address"
+                  required
                   rows="3"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="Alamat lengkap bisnis"
+                  :disabled="isLoading"
                 ></textarea>
               </div>
-              
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">Nomor Telepon</span>
+
+              <div>
+                <label for="businessPhone" class="block text-sm font-medium text-gray-700 mb-2">
+                  Nomor Telepon *
                 </label>
-                <input 
-                  type="tel" 
-                  v-model="businessData.businessPhone"
-                  class="input input-bordered" 
-                  placeholder="08xxxxxxxxxx"
+                <input
+                  id="businessPhone"
+                  v-model="form.business_phone"
+                  type="tel"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="08123456789"
+                  :disabled="isLoading"
                 />
               </div>
             </div>
           </div>
 
-          <!-- Step 2: Outlet Setup -->
-          <div v-if="currentStep === 2">
-            <h2 class="card-title mb-4">Setup Outlet Utama</h2>
-            <p class="mb-6 text-base-content/70">Buat outlet pertama untuk bisnis Anda</p>
+          <!-- Step 2: Outlet Information -->
+          <div v-if="currentStep === 2" class="space-y-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Outlet Utama</h2>
             
-            <div class="space-y-4">
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">Nama Outlet</span>
+            <div class="grid grid-cols-1 gap-6">
+              <div>
+                <label for="outletName" class="block text-sm font-medium text-gray-700 mb-2">
+                  Nama Outlet *
                 </label>
-                <input 
-                  type="text" 
-                  v-model="outletData.name"
-                  class="input input-bordered" 
-                  placeholder="Contoh: Cabang Pusat, Outlet Mall"
-                  required 
+                <input
+                  id="outletName"
+                  v-model="form.outlet_name"
+                  type="text"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="Cabang Pusat"
+                  :disabled="isLoading"
                 />
               </div>
-              
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">Alamat Outlet</span>
+
+              <div>
+                <label for="outletAddress" class="block text-sm font-medium text-gray-700 mb-2">
+                  Alamat Outlet *
                 </label>
-                <textarea 
-                  v-model="outletData.address"
-                  class="textarea textarea-bordered" 
-                  placeholder="Alamat outlet (bisa sama dengan alamat bisnis)"
+                <textarea
+                  id="outletAddress"
+                  v-model="form.outlet_address"
+                  required
                   rows="3"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="Alamat outlet"
+                  :disabled="isLoading"
                 ></textarea>
               </div>
             </div>
           </div>
 
-          <!-- Step 3: Configuration -->
-          <div v-if="currentStep === 3">
-            <h2 class="card-title mb-4">Konfigurasi Dasar</h2>
-            <p class="mb-6 text-base-content/70">Atur pengaturan operasional bisnis Anda</p>
+          <!-- Step 3: Financial Configuration -->
+          <div v-if="currentStep === 3" class="space-y-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Konfigurasi Keuangan</h2>
             
             <div class="space-y-6">
-              <!-- Tax Settings -->
-              <div class="form-control">
-                <label class="label cursor-pointer">
-                  <span class="label-text">Aktifkan Pajak (PPN)</span>
-                  <input 
-                    type="checkbox" 
-                    v-model="configData.taxEnabled"
-                    class="checkbox checkbox-primary" 
+              <!-- Tax Configuration -->
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-4">
+                  <label for="taxEnabled" class="block text-sm font-medium text-gray-700">
+                    Aktifkan Pajak
+                  </label>
+                  <input
+                    id="taxEnabled"
+                    v-model="form.tax_enabled"
+                    type="checkbox"
+                    class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                    :disabled="isLoading"
                   />
-                </label>
-              </div>
-              
-              <div v-if="configData.taxEnabled" class="form-control">
-                <label class="label">
-                  <span class="label-text">Persentase Pajak (%)</span>
-                </label>
-                <input 
-                  type="number" 
-                  v-model="configData.taxPercent"
-                  class="input input-bordered" 
-                  placeholder="11"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                />
+                </div>
+                
+                <div v-if="form.tax_enabled">
+                  <label for="taxPercent" class="block text-sm font-medium text-gray-700 mb-2">
+                    Persentase Pajak (%)
+                  </label>
+                  <input
+                    id="taxPercent"
+                    v-model.number="form.tax_percent"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="11"
+                    :disabled="isLoading"
+                  />
+                </div>
               </div>
 
-              <!-- Service Charge Settings -->
-              <div class="form-control">
-                <label class="label cursor-pointer">
-                  <span class="label-text">Aktifkan Service Charge</span>
-                  <input 
-                    type="checkbox" 
-                    v-model="configData.serviceChargeEnabled"
-                    class="checkbox checkbox-primary" 
+              <!-- Service Charge Configuration -->
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-4">
+                  <label for="serviceChargeEnabled" class="block text-sm font-medium text-gray-700">
+                    Aktifkan Service Charge
+                  </label>
+                  <input
+                    id="serviceChargeEnabled"
+                    v-model="form.service_charge_enabled"
+                    type="checkbox"
+                    class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                    :disabled="isLoading"
                   />
-                </label>
+                </div>
+                
+                <div v-if="form.service_charge_enabled">
+                  <label for="serviceChargePercent" class="block text-sm font-medium text-gray-700 mb-2">
+                    Persentase Service Charge (%)
+                  </label>
+                  <input
+                    id="serviceChargePercent"
+                    v-model.number="form.service_charge_percent"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="10"
+                    :disabled="isLoading"
+                  />
+                </div>
               </div>
-              
-              <div v-if="configData.serviceChargeEnabled" class="form-control">
-                <label class="label">
-                  <span class="label-text">Persentase Service Charge (%)</span>
-                </label>
-                <input 
-                  type="number" 
-                  v-model="configData.serviceChargePercent"
-                  class="input input-bordered" 
-                  placeholder="5"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                />
+
+              <!-- Business Metrics (Optional) -->
+              <div class="border border-gray-200 rounded-lg p-4">
+                <h3 class="text-sm font-medium text-gray-700 mb-4">Estimasi Bisnis (Opsional)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label for="fixedCosts" class="block text-sm text-gray-600 mb-1">
+                      Biaya Tetap/Bulan
+                    </label>
+                    <input
+                      id="fixedCosts"
+                      v-model.number="form.fixed_costs"
+                      type="number"
+                      min="0"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="5000000"
+                      :disabled="isLoading"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label for="avgVariableCost" class="block text-sm text-gray-600 mb-1">
+                      Rata-rata HPP
+                    </label>
+                    <input
+                      id="avgVariableCost"
+                      v-model.number="form.avg_variable_cost"
+                      type="number"
+                      min="0"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="15000"
+                      :disabled="isLoading"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label for="avgSellingPrice" class="block text-sm text-gray-600 mb-1">
+                      Rata-rata Harga Jual
+                    </label>
+                    <input
+                      id="avgSellingPrice"
+                      v-model.number="form.avg_selling_price"
+                      type="number"
+                      min="0"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="25000"
+                      :disabled="isLoading"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Step 4: Completion -->
-          <div v-if="currentStep === 4">
-            <div class="text-center">
-              <div class="mb-4">
-                <div class="w-16 h-16 bg-success rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg class="w-8 h-8 text-success-content" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                </div>
-              </div>
-              <h2 class="text-2xl font-bold mb-2">Selamat!</h2>
-              <p class="mb-6 text-base-content/70">Setup awal bisnis Anda telah selesai. Anda siap untuk mulai menggunakan Finako!</p>
-              
-              <div class="bg-base-200 p-4 rounded-lg mb-6">
-                <h3 class="font-semibold mb-2">Ringkasan Setup:</h3>
-                <ul class="text-left space-y-1">
-                  <li>✅ Profil Bisnis: {{ businessData.businessName }}</li>
-                  <li>✅ Outlet: {{ outletData.name }}</li>
-                  <li>✅ Konfigurasi: Pajak {{ configData.taxEnabled ? 'Aktif' : 'Nonaktif' }}</li>
-                </ul>
-              </div>
-            </div>
+          <!-- Error Message -->
+          <div v-if="errorMessage" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
+            {{ errorMessage }}
           </div>
 
           <!-- Navigation Buttons -->
-          <div class="card-actions justify-between mt-8">
-            <button 
-              v-if="currentStep > 1" 
-              @click="previousStep" 
-              class="btn btn-outline"
+          <div class="flex justify-between pt-6">
+            <!-- Previous Button -->
+            <button
+              v-if="currentStep > 1"
+              type="button"
+              @click="currentStep--"
+              :disabled="isLoading"
+              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Sebelumnya
             </button>
             <div v-else></div>
-            
-            <button 
-              v-if="currentStep < 4" 
-              @click="nextStep" 
-              class="btn btn-primary"
-              :disabled="!canProceed"
+
+            <!-- Next/Submit Button -->
+            <button
+              type="submit"
+              :disabled="isLoading || !isCurrentStepValid"
+              class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {{ currentStep === 3 ? 'Selesaikan Setup' : 'Selanjutnya' }}
-            </button>
-            
-            <button 
-              v-if="currentStep === 4" 
-              @click="finishOnboarding" 
-              class="btn btn-success"
-              :disabled="loading"
-            >
-              <span v-if="loading" class="loading loading-spinner"></span>
-              Mulai Menggunakan Finako
+              <svg v-if="isLoading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isLoading ? 'Menyimpan...' : (currentStep === totalSteps ? 'Selesai Setup' : 'Lanjutkan') }}
             </button>
           </div>
+        </form>
+
+        <!-- Logout Button -->
+        <div class="mt-6 pt-6 border-t border-gray-200">
+          <button
+            @click="handleLogout"
+            :disabled="isLoggingOut"
+            class="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg v-if="isLoggingOut" class="animate-spin -ml-1 mr-2 h-4 w-4 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-else class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            {{ isLoggingOut ? 'Keluar...' : 'Keluar dari Setup' }}
+          </button>
         </div>
       </div>
     </div>
@@ -229,106 +299,114 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/userStore'
-import { supabase } from '@/supabase'
 
 const router = useRouter()
 const userStore = useUserStore()
 
+// Form state
 const currentStep = ref(1)
-const loading = ref(false)
+const totalSteps = ref(3)
+const isLoading = ref(false)
+const isLoggingOut = ref(false)
+const errorMessage = ref('')
 
-// Form data
-const businessData = ref({
-  businessName: '',
-  businessType: '',
-  businessAddress: '',
-  businessPhone: ''
+const form = ref({
+  business_name: '',
+  business_address: '',
+  business_phone: '',
+  outlet_name: '',
+  outlet_address: '',
+  tax_enabled: true,
+  tax_percent: 11,
+  service_charge_enabled: false,
+  service_charge_percent: 0,
+  fixed_costs: 0,
+  avg_variable_cost: 0,
+  avg_selling_price: 0
 })
 
-const outletData = ref({
-  name: '',
-  address: ''
-})
-
-const configData = ref({
-  taxEnabled: false,
-  taxPercent: 11,
-  serviceChargeEnabled: false,
-  serviceChargePercent: 5
-})
-
-// Computed
-const canProceed = computed(() => {
-  if (currentStep.value === 1) {
-    return businessData.value.businessName && businessData.value.businessType
+// Computed properties
+const isCurrentStepValid = computed(() => {
+  switch (currentStep.value) {
+    case 1:
+      return form.value.business_name && 
+             form.value.business_address && 
+             form.value.business_phone
+    case 2:
+      return form.value.outlet_name && 
+             form.value.outlet_address
+    case 3:
+      return true // Financial config is optional
+    default:
+      return false
   }
-  if (currentStep.value === 2) {
-    return outletData.value.name
-  }
-  if (currentStep.value === 3) {
-    return true
-  }
-  return false
 })
 
-// Methods
-function nextStep() {
-  if (canProceed.value) {
+// Handle form submission
+async function handleSubmit() {
+  if (isLoading.value) return
+
+  // If not last step, go to next step
+  if (currentStep.value < totalSteps.value) {
     currentStep.value++
+    return
   }
-}
 
-function previousStep() {
-  currentStep.value--
-}
+  // Final submission
+  isLoading.value = true
+  errorMessage.value = ''
 
-async function finishOnboarding() {
   try {
-    loading.value = true
+    // Prepare onboarding data
+    const onboardingData = { ...form.value }
 
-    const organizationId = userStore.organization.id
+    // Submit onboarding
+    const result = await userStore.completeOnboarding(onboardingData)
 
-    // 1. Create business profile
-    await supabase.from('business_profiles').insert({
-      organization_id: organizationId,
-      tax_enabled: configData.value.taxEnabled,
-      tax_percent: configData.value.taxPercent,
-      service_charge_enabled: configData.value.serviceChargeEnabled,
-      service_charge_percent: configData.value.serviceChargePercent
-    })
-
-    // 2. Create main outlet
-    await supabase.from('outlets').insert({
-      organization_id: organizationId,
-      name: outletData.value.name,
-      address: outletData.value.address
-    })
-
-    // 3. Update organization dengan business info
-    await supabase.from('organizations').update({
-      name: businessData.value.businessName,
-      address: businessData.value.businessAddress,
-      phone: businessData.value.businessPhone
-    }).eq('id', organizationId)
-
-    // 4. Refresh user store
-    await userStore.fetchUserProfile()
-
-    // 5. Redirect to dashboard
-    if (userStore.userRole === 'pegawai') {
-      router.push('/transaksi')
-    } else {
+    if (result.success) {
+      // Onboarding successful, redirect to dashboard
       router.push('/')
+    } else {
+      errorMessage.value = result.error || 'Setup gagal. Silakan coba lagi.'
     }
-
   } catch (error) {
     console.error('Onboarding error:', error)
-    alert('Terjadi kesalahan saat menyelesaikan setup. Silakan coba lagi.')
+    errorMessage.value = error.message || 'Terjadi kesalahan. Silakan coba lagi.'
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
+
+// Handle logout
+async function handleLogout() {
+  if (isLoggingOut.value) return
+  
+  isLoggingOut.value = true
+  
+  try {
+    await userStore.logout()
+    router.push('/login')
+  } catch (error) {
+    console.error('Logout failed:', error)
+  } finally {
+    isLoggingOut.value = false
+  }
+}
+
+// Initialize page
+onMounted(() => {
+  // Pre-fill organization name if available
+  if (userStore.organization?.name) {
+    form.value.business_name = userStore.organization.name
+  }
+
+  // Focus on first field
+  const firstInput = document.getElementById('businessName')
+  if (firstInput) {
+    firstInput.focus()
+  }
+})
 </script>

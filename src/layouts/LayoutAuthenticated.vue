@@ -40,7 +40,7 @@ function handleHideTooltip() {
       <Sidebar @show-tooltip="handleShowTooltip" @hide-tooltip="handleHideTooltip" />
 
       <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <router-view />
+        <slot />
       </main>
     </div>
     

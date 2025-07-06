@@ -296,10 +296,6 @@ class ApiService {
   }
 
   // Register endpoints
-  async getPackages() {
-    return this.get('/register/packages');
-  }
-
   async checkEmailAvailability(email) {
     return this.get('/register/check-email', { email });
   }
@@ -311,6 +307,97 @@ class ApiService {
   // Health check
   async healthCheck() {
     return this.get('/health');
+  }
+
+  // --- SAAS FLOW ENDPOINTS ---
+  
+  // Get packages
+  async getPackages() {
+    try {
+      console.log('API Service: Building URL for /packages')
+      const url = this.buildUrl('/packages');
+      console.log('API Service: URL built:', url.toString())
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+      
+      console.log('API Service: Response status:', response.status)
+      const data = await this.handleResponse(response);
+      console.log('API Service: Response data:', data)
+      
+      return data; // Langsung return data, bukan {data, error}
+    } catch (error) {
+      console.error('Get packages error:', error);
+      throw error;
+    }
+  }
+
+  // Register tenant
+  async registerTenant(registrationData) {
+    try {
+      const url = this.buildUrl('/register');
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(registrationData)
+      });
+      
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Register tenant error:', error);
+      throw error;
+    }
+  }
+
+  // Check session and get redirect info
+  async getSessionInfo(userId) {
+    try {
+      const url = this.buildUrl(`/auth/session/${userId}`);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+      
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Get session info error:', error);
+      throw error;
+    }
+  }
+
+  // Check onboarding status
+  async getOnboardingStatus(organizationId) {
+    try {
+      const url = this.buildUrl(`/onboarding/status/${organizationId}`);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+      
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Get onboarding status error:', error);
+      throw error;
+    }
+  }
+
+  // Complete onboarding
+  async completeOnboarding(userId, organizationId, onboardingData) {
+    try {
+      const url = this.buildUrl(`/onboarding/complete/${userId}/${organizationId}`);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(onboardingData)
+      });
+      
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Complete onboarding error:', error);
+      throw error;
+    }
   }
 }
 

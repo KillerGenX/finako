@@ -5,8 +5,8 @@ const { createTenant, getPackages, checkEmailAvailability } = require('../contro
 // GET /api/packages - Get available packages
 router.get('/packages', getPackages);
 
-// GET /api/check-email/:email - Check email availability
-router.get('/check-email/:email', checkEmailAvailability);
+// GET /api/register/check-email - Check email availability
+router.get('/register/check-email', checkEmailAvailability);
 
 // POST /api/register - Create new tenant
 router.post('/register', createTenant);

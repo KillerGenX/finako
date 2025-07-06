@@ -200,19 +200,196 @@ export const useUserStore = defineStore('user', () => {
     }, duration);
   }
 
+  // --- SaaS FLOW ACTIONS ---
+  async function checkSessionAndRedirect() {
+    try {
+      if (!session.value?.user?.id) {
+        return { next_step: 'login' };
+      }
+
+      console.log('Checking session for user ID:', session.value.user.id);
+      
+      // Use direct API call without withErrorHandling wrapper to get raw response
+      const response = await apiService.getSessionInfo(session.value.user.id);
+      
+      console.log('Session API response:', response);
+
+      // Extract data from the response structure {success: true, data: {...}}
+      const data = response.data || response;
+      
+      console.log('Extracted data:', data);
+
+      // Update store with fresh data
+      if (data.organization) {
+        organization.value = data.organization;
+        role.value = data.role;
+        console.log('Updated organization:', data.organization);
+      }
+      
+      if (data.business_profile) {
+        businessProfile.value = data.business_profile;
+        console.log('Updated business profile:', data.business_profile);
+      }
+
+      if (data.active_features) {
+        activeFeatures.value = data.active_features;
+        console.log('Updated active features:', data.active_features);
+      }
+
+      const nextStep = data.next_step || 'dashboard';
+      console.log('Determined next step:', nextStep);
+      
+      return { next_step: nextStep };
+    } catch (error) {
+      console.error('Session check failed:', error);
+      return { next_step: 'login' };
+    }
+  }
+
+  async function registerTenant(registrationData) {
+    try {
+      console.log('Registering tenant with data:', registrationData);
+      
+      // Use API service method directly
+      const data = await apiService.registerTenant(registrationData);
+      
+      console.log('Registration API response:', data);
+
+      // Update store with new organization data
+      if (data.organization) {
+        organization.value = data.organization;
+        role.value = 'owner';
+      }
+
+      showNotification('Registrasi berhasil!', 'success');
+      return { success: true, next_step: data.next_step || 'login' };
+    } catch (error) {
+      console.error('Registration error:', error);
+      showNotification(error.message, 'error');
+      return { success: false, error: error.message };
+    }
+  }
+
+  async function completeOnboarding(onboardingData) {
+    try {
+      if (!session.value?.user?.id || !organization.value?.id) {
+        throw new Error('User session or organization not found');
+      }
+
+      console.log('Completing onboarding with data:', onboardingData);
+      
+      // Use API service method directly (no destructuring needed)
+      const data = await apiService.completeOnboarding(
+        session.value.user.id,
+        organization.value.id,
+        onboardingData
+      );
+
+      console.log('Onboarding API response:', data);
+
+      // Refresh user profile to get updated business profile
+      await fetchUserProfile();
+      
+      showNotification('Setup bisnis berhasil!', 'success');
+      return { success: true, next_step: data.next_step || 'dashboard' };
+    } catch (error) {
+      console.error('Onboarding error:', error);
+      showNotification(error.message, 'error');
+      return { success: false, error: error.message };
+    }
+  }
+
+  async function getPackages() {
+    try {
+      console.log('UserStore: Calling API getPackages...')
+      const data = await apiService.getPackages(); // Langsung terima data, bukan {data, error}
+      console.log('UserStore: API response:', data)
+      return data;
+    } catch (error) {
+      console.error('Failed to fetch packages:', error);
+      return [];
+    }
+  }
+
+  // --- ENHANCED LOGIN/LOGOUT ---
+  async function loginWithEmailPassword(email, password) {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // Fetch user profile after successful login
+      await fetchUserProfile();
+      
+      showNotification('Login berhasil!', 'success');
+      return { success: true };
+    } catch (error) {
+      console.error('Login error:', error);
+      showNotification(error.message, 'error');
+      return { success: false, error: error.message };
+    }
+  }
+
+  async function logout() {
+    try {
+      await supabase.auth.signOut();
+      clearUserProfile();
+      showNotification('Logout berhasil', 'info');
+      return { success: true };
+    } catch (error) {
+      console.error('Logout error:', error);
+      clearUserProfile(); // Force clear even if logout fails
+      return { success: false, error: error.message };
+    }
+  }
+
+  // --- UTILITY METHODS ---
+  function hasRole(requiredRole) {
+    return role.value === requiredRole;
+  }
+
+  function hasFeature(requiredFeature) {
+    return activeFeatures.value.includes(requiredFeature);
+  }
+
+  function getOrganizationStatus() {
+    return organization.value?.status || 'unknown';
+  }
+
+  function isOnboardingCompleted() {
+    const hasActiveStatus = organization.value?.status === 'active';
+    const hasBusinessProfile = !!businessProfile.value;
+    
+    console.log('Checking onboarding completion:');
+    console.log('- Organization status:', organization.value?.status);
+    console.log('- Has business profile:', hasBusinessProfile);
+    console.log('- Is completed:', hasActiveStatus && hasBusinessProfile);
+    
+    return hasActiveStatus && hasBusinessProfile;
+  }
+
   return { 
     // State
     session, profile, organization, role, isReady,
     isSidebarCollapsed, activeFeatures, businessProfile, notification,
     
     // Getters
-    userRole, isLoggedIn, organizationId, hasValidMembership,
+    userRole, isLoggedIn, organizationId, hasValidMembership, isOnboardingCompleted,
     
     // Actions
     fetchUserProfile, clearUserProfile, logout, refreshUserData,
     toggleSidebar, showNotification,
     
     // Utilities
-    hasFeature, hasRole, validateMembership
+    hasFeature, hasRole, validateMembership,
+
+    // SaaS Actions
+    checkSessionAndRedirect, registerTenant, completeOnboarding, getPackages,
+
+    // Enhanced Login/Logout
+    loginWithEmailPassword
   }
 })
