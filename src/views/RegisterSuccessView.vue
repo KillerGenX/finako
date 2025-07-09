@@ -17,12 +17,6 @@
         <p class="text-sm text-gray-600 mb-1">Akun berhasil dibuat untuk:</p>
         <p class="font-semibold text-gray-900">{{ registrationData.email }}</p>
         <p class="text-sm text-gray-600 mt-2">Organisasi: {{ registrationData.organizationName }}</p>
-        <div class="mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-          <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          Paket {{ registrationData.packageName }}
-        </div>
       </div>
 
       <!-- Next Steps -->
@@ -96,10 +90,10 @@ const route = useRoute()
 const userStore = useUserStore()
 
 // Registration data from query params or store
+
 const registrationData = ref({
   email: '',
   organizationName: '',
-  packageName: '',
   userName: ''
 })
 
@@ -108,10 +102,8 @@ onMounted(() => {
   registrationData.value = {
     email: route.query.email || 'User',
     organizationName: route.query.organizationName || 'Organisasi Anda',
-    packageName: route.query.packageName || 'Basic',
     userName: route.query.userName || 'User'
   }
-
   // If no registration data, redirect to register
   if (!route.query.email) {
     router.push('/register')

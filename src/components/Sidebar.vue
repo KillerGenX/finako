@@ -50,20 +50,20 @@ async function handleLogout() {
     <div class="flex-grow overflow-y-auto overflow-x-hidden">
       <ul class="menu p-2 space-y-1">
         <li class="menu-title" v-if="!userStore.isSidebarCollapsed"><span>Harian</span></li>
-        <li v-if="userStore.userRole === 'owner'">
+        <li v-if="['owner','admin','manager','staff'].includes(userStore.userRole)">
           <RouterLink to="/" @mouseenter="showTooltip($event, 'Dasbor')" @mouseleave="hideTooltip" class="items-center">
             <HomeIcon class="h-6 w-6 shrink-0" />
             <span v-if="!userStore.isSidebarCollapsed">Dasbor</span>
           </RouterLink>
         </li>
-        <li v-if="userStore.activeFeatures.includes('pos')">
+        <li v-if="['owner','admin','manager','staff'].includes(userStore.userRole)">
           <RouterLink to="/transaksi" @mouseenter="showTooltip($event, 'Kasir (POS)')" @mouseleave="hideTooltip" class="items-center">
             <ShoppingCartIcon class="h-6 w-6 shrink-0" />
             <span v-if="!userStore.isSidebarCollapsed">Kasir (POS)</span>
           </RouterLink>
         </li>
 
-        <template v-if="userStore.userRole === 'owner'">
+        <template v-if="['owner','admin','manager'].includes(userStore.userRole)">
           <div class="divider my-2" v-if="!userStore.isSidebarCollapsed"></div>
           <li class="menu-title" v-if="!userStore.isSidebarCollapsed"><span>Manajemen</span></li>
           <li>
@@ -72,26 +72,25 @@ async function handleLogout() {
               <span v-if="!userStore.isSidebarCollapsed">Produk</span>
             </RouterLink>
           </li>
-          <li v-if="userStore.activeFeatures.includes('stock_management')">
+          <li>
             <RouterLink to="/stok" @mouseenter="showTooltip($event, 'Stok')" @mouseleave="hideTooltip" class="items-center">
               <CubeIcon class="h-6 w-6 shrink-0" />
               <span v-if="!userStore.isSidebarCollapsed">Stok</span>
             </RouterLink>
           </li>
-          <li v-if="userStore.activeFeatures.includes('expenses')">
+          <li>
             <RouterLink to="/biaya" @mouseenter="showTooltip($event, 'Biaya')" @mouseleave="hideTooltip" class="items-center">
               <BuildingStorefrontIcon class="h-6 w-6 shrink-0" />
               <span v-if="!userStore.isSidebarCollapsed">Biaya</span>
             </RouterLink>
           </li>
-
-          <li v-if="userStore.activeFeatures.includes('kategori-biaya')">
+          <li>
             <RouterLink to="/kategori-biaya" @mouseenter="showTooltip($event, 'Kategori Biaya')" @mouseleave="hideTooltip" class="items-center">
               <TagIcon class="h-6 w-6 shrink-0" />
               <span v-if="!userStore.isSidebarCollapsed">Kategori Biaya</span>
             </RouterLink>
           </li>
-           <li v-if="userStore.activeFeatures.includes('customer_data')">
+          <li>
             <RouterLink to="/pelanggan" @mouseenter="showTooltip($event, 'Pelanggan')" @mouseleave="hideTooltip" class="items-center">
               <UserGroupIcon class="h-6 w-6 shrink-0" />
               <span v-if="!userStore.isSidebarCollapsed">Pelanggan</span>
@@ -99,23 +98,23 @@ async function handleLogout() {
           </li>
         </template>
         
-        <template v-if="userStore.userRole === 'owner'">
-            <div class="divider my-2" v-if="!userStore.isSidebarCollapsed && (userStore.activeFeatures.includes('reports') || userStore.activeFeatures.includes('employee_attendance'))"></div>
-            <li v-if="userStore.activeFeatures.includes('reports')">
+        <template v-if="['owner','admin'].includes(userStore.userRole)">
+            <div class="divider my-2" v-if="!userStore.isSidebarCollapsed"></div>
+            <li>
                 <RouterLink to="/laporan" @mouseenter="showTooltip($event, 'Laporan')" @mouseleave="hideTooltip" class="items-center">
                     <ChartPieIcon class="h-6 w-6 shrink-0" />
                     <span v-if="!userStore.isSidebarCollapsed">Laporan</span>
                 </RouterLink>
             </li>
-            <li v-if="userStore.activeFeatures.includes('employee_management')">
+            <li v-if="userStore.organization?.subscription?.plan_id === 'pro'">
               <RouterLink to="/pegawai" @mouseenter="showTooltip($event, 'Pegawai')" @mouseleave="hideTooltip" class="items-center">
                 <UsersIcon class="h-6 w-6 shrink-0" />
                 <span v-if="!userStore.isSidebarCollapsed">Pegawai</span>
               </RouterLink>
             </li>
         </template>
-        
-        <li v-if="userStore.activeFeatures.includes('employee_attendance')">
+
+        <li v-if="userStore.organization?.subscription?.plan_id === 'pro'">
           <RouterLink to="/absensi" @mouseenter="showTooltip($event, 'Absensi')" @mouseleave="hideTooltip" class="items-center">
             <ClockIcon class="h-6 w-6 shrink-0" />
             <span v-if="!userStore.isSidebarCollapsed">Absensi</span>

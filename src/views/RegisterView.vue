@@ -32,18 +32,18 @@
 
           <!-- Owner Name -->
           <div>
-            <label for="ownerName" class="block text-sm font-medium text-gray-700 mb-2">
-              Nama Pemilik *
-            </label>
-            <input
-              id="ownerName"
-              v-model="form.ownerName"
-              type="text"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              placeholder="Nama lengkap pemilik"
-              :disabled="isLoading"
-            />
+          <label for="full_name" class="block text-sm font-medium text-gray-700 mb-2">
+            Nama Pemilik *
+          </label>
+          <input
+            id="full_name"
+            v-model="form.full_name"
+            type="text"
+            required
+            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            placeholder="Nama lengkap pemilik"
+            :disabled="isLoading"
+          />
           </div>
 
           <!-- Email -->
@@ -94,38 +94,7 @@
             </div>
           </div>
 
-          <!-- Package Selection -->
-          <div>
-            <label for="packageId" class="block text-sm font-medium text-gray-700 mb-2">
-              Pilih Paket *
-            </label>
-            <select
-              id="packageId"
-              v-model="form.packageId"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              :disabled="isLoading || packagesLoading"
-            >
-              <option value="">Pilih paket langganan</option>
-              <option
-                v-for="pkg in packages"
-                :key="pkg.id"
-                :value="pkg.id"
-              >
-                {{ pkg.name }} - Rp {{ formatCurrency(pkg.price) }}/bulan
-              </option>
-            </select>
-            
-            <!-- Package Details -->
-            <div v-if="selectedPackage" class="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
-              <p class="text-sm font-medium text-green-800">{{ selectedPackage.name }}</p>
-              <p class="text-sm text-green-600">Max {{ selectedPackage.user_limit }} pengguna</p>
-              <div class="mt-1">
-                <span class="text-xs text-green-600">Fitur: </span>
-                <span class="text-xs text-green-700">{{ selectedPackage.features?.join(', ') || 'Basic features' }}</span>
-              </div>
-            </div>
-          </div>
+          <!-- ...existing code... -->
 
           <!-- Error Message -->
           <div v-if="errorMessage" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
@@ -195,90 +164,55 @@ const router = useRouter()
 const userStore = useUserStore()
 
 // Form state
+
 const form = ref({
   businessName: '',
-  ownerName: '',
+  full_name: '',
   email: '',
   password: '',
-  packageId: '',
   agreeTerms: false
 })
 
 const isLoading = ref(false)
-const packagesLoading = ref(false)
 const showPassword = ref(false)
 const errorMessage = ref('')
-const packages = ref([])
-
-// Computed properties
-const selectedPackage = computed(() => {
-  return packages.value.find(pkg => pkg.id === form.value.packageId) || null
-})
 
 const isFormValid = computed(() => {
   return form.value.businessName &&
-         form.value.ownerName &&
+         form.value.full_name &&
          form.value.email &&
          form.value.password &&
-         form.value.packageId &&
          form.value.agreeTerms &&
          form.value.password.length >= 6
 })
 
-// Load packages
-async function loadPackages() {
-  packagesLoading.value = true
-  try {
-    console.log('Loading packages...')
-    const packageData = await userStore.getPackages()
-    console.log('Package data received:', packageData)
-    packages.value = packageData || []
-    console.log('Packages array set:', packages.value)
-  } catch (error) {
-    console.error('Failed to load packages:', error)
-    errorMessage.value = 'Gagal memuat paket. Silakan refresh halaman.'
-  } finally {
-    packagesLoading.value = false
-  }
-}
 
 // Handle registration
 async function handleRegister() {
   if (isLoading.value || !isFormValid.value) return
-  
   isLoading.value = true
   errorMessage.value = ''
-
   try {
-    // Validate password
     if (form.value.password.length < 6) {
       throw new Error('Password minimal 6 karakter')
     }
-
     // Prepare registration data
     const registrationData = {
       email: form.value.email.trim(),
       password: form.value.password,
       businessName: form.value.businessName.trim(),
-      ownerName: form.value.ownerName.trim(),
-      packageId: form.value.packageId
+      full_name: form.value.full_name.trim()
     }
-
     // Attempt registration
     const result = await userStore.registerTenant(registrationData)
-
     if (result.success) {
-      // Find selected package name
-      const selectedPackage = packages.value.find(pkg => pkg.id === form.value.packageId)
-      
       // Registration successful, redirect to success page with registration info
       router.push({
         path: '/register/success',
         query: {
           email: form.value.email,
           organizationName: form.value.businessName,
-          packageName: selectedPackage?.name || 'Basic',
-          userName: form.value.ownerName
+          userName: form.value.full_name
         }
       })
     } else {
@@ -292,15 +226,8 @@ async function handleRegister() {
   }
 }
 
-// Format currency
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID').format(amount)
-}
-
 // Initialize page
-onMounted(async () => {
-  await loadPackages()
-  
+onMounted(() => {
   // Focus on business name field
   const businessNameInput = document.getElementById('businessName')
   if (businessNameInput) {

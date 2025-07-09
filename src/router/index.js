@@ -229,6 +229,16 @@ router.beforeEach(async (to, from, next) => {
 
   // Check if route requires authentication
   if (to.meta.requiresAuth) {
+    // TUNDA GUARD SAMPAI STATE USERSTORE SIAP
+    const waitForReady = async () => {
+      let waited = 0;
+      while (!userStore.isReady && waited < 3000) { // max 3 detik
+        await new Promise(res => setTimeout(res, 50));
+        waited += 50;
+      }
+    };
+    await waitForReady();
+
     // Check if user is authenticated
     if (!userStore.isLoggedIn) {
       console.log('User not authenticated, redirecting to login')
@@ -254,28 +264,46 @@ router.beforeEach(async (to, from, next) => {
         return next({ name: 'Login' })
       }
 
-      // Check organization status restrictions
-      if (to.meta.allowedStatus && !to.meta.allowedStatus.includes(organization.status)) {
-        console.log(`Organization status ${organization.status} not allowed for route ${to.name}`)
-        return next({ name: getRedirectRoute(nextStep) })
+      // Check organization subscription status restrictions
+      if (to.meta.allowedStatus && organization.subscription && !to.meta.allowedStatus.includes(organization.subscription.status)) {
+        console.log(`Organization subscription status ${organization.subscription.status} not allowed for route ${to.name}`)
+        const redirectRoute = getRedirectRoute(nextStep)
+        if (to.name !== redirectRoute) {
+          return next({ name: redirectRoute })
+        } else {
+          return next()
+        }
       }
 
       // Check if onboarding is required but not completed
       if (to.meta.requiresOnboarding && !userStore.isOnboardingCompleted()) {
         console.log('Onboarding required but not completed')
-        return next({ name: 'Onboarding' })
+        if (to.name !== 'Onboarding') {
+          return next({ name: 'Onboarding' })
+        } else {
+          return next()
+        }
       }
 
       // If trying to access onboarding but already completed
       if (to.name === 'Onboarding' && userStore.isOnboardingCompleted()) {
         console.log('Onboarding already completed, redirecting to dashboard')
-        return next({ name: 'Dashboard' })
+        if (to.name !== 'Dashboard') {
+          return next({ name: 'Dashboard' })
+        } else {
+          return next()
+        }
       }
 
-      // If trying to access payment-info but status is not pending
-      if (to.name === 'PaymentInfo' && organization.status !== 'pending') {
-        console.log('Payment info not needed, organization status:', organization.status)
-        return next({ name: getRedirectRoute(nextStep) })
+      // If trying to access payment-info but subscription status is not pending
+      if (to.name === 'PaymentInfo' && organization.subscription && organization.subscription.status !== 'pending') {
+        console.log('Payment info not needed, subscription status:', organization.subscription.status)
+        const redirectRoute = getRedirectRoute(nextStep)
+        if (to.name !== redirectRoute) {
+          return next({ name: redirectRoute })
+        } else {
+          return next()
+        }
       }
 
     } catch (error) {

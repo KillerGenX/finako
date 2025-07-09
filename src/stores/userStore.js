@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/supabase'
-import apiService from '@/services/api'
+
 
 export const useUserStore = defineStore('user', () => {
   // --- STATE ---
@@ -21,20 +21,16 @@ export const useUserStore = defineStore('user', () => {
   const organizationId = computed(() => organization.value?.id || null)
   const hasValidMembership = computed(() => !!session.value && !!organization.value && !!role.value)
 
-  // --- INITIALIZE API SERVICE ---
-  // Set user store reference to API service to avoid circular imports
-  apiService.setUserStore({
-    session,
-    organization,
-    showNotification,
-    clearUserProfile
-  })
+
 
   // --- ACTIONS ---
   async function fetchUserProfile() {
-    isReady.value = false;
+    // Hanya set isReady ke false jika belum pernah ready (startup pertama)
+    if (!isReady.value) {
+      isReady.value = false;
+    }
     try {
-      // Get current Supabase session (auth still via Supabase)
+      // Ambil session Supabase
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       if (!currentSession) {
         clearUserProfile();
@@ -42,72 +38,85 @@ export const useUserStore = defineStore('user', () => {
         return;
       }
       session.value = currentSession;
-      
-      // --- ENHANCED: Use Backend API instead of direct Supabase ---
-      
-      // Get user membership and organization data via backend
-      try {
-        const { data: memberData, error: memberError } = await supabase
-          .from('organization_members')
-          .select(`role, organizations ( * )`)
-          .eq('user_id', session.value.user.id)
-          .single();
-          
-        if (memberError && memberError.code !== 'PGRST116') throw memberError;
-        
-        if (memberData) {
-          role.value = memberData.role;
-          organization.value = memberData.organizations;
-          console.log('UserStore Debug - Organization:', organization.value);
-        }
-      } catch (error) {
-        console.error('Error fetching membership:', error);
-        // Continue with profile fetch even if membership fails
-      }
 
-      // Get organization features via backend (if organization exists)
-      if (organization.value?.id) {
-        try {
-          const { data: featureData, error: featureError } = await supabase
-            .from('organization_features')
-            .select('feature_id')
-            .eq('organization_id', organization.value.id)
-            .eq('is_enabled', true);
-            
-          if (featureError) throw featureError;
-          if (featureData) {
-            activeFeatures.value = featureData.map(f => f.feature_id);
-          }
-        } catch (error) {
-          console.error('Error fetching features:', error);
-          activeFeatures.value = [];
-        }
+      // Ambil profile user dari tabel profiles
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.value.user.id)
+        .single();
+      if (profileError) throw profileError;
+      // Gabungkan email dari session Supabase ke profile agar selalu tersedia
+      profile.value = { ...userProfile, email: session.value.user.email };
 
-        // Get business profile via backend API
-        try {
-          const profileData = await apiService.getBusinessProfile(organization.value.id);
-          businessProfile.value = profileData.data;
-          console.log('UserStore Debug - Business Profile:', businessProfile.value);
-        } catch (error) {
-          console.error('Error fetching business profile:', error);
-          businessProfile.value = null;
-        }
-      }
-
-      // Get user profile from Supabase (user data still in Supabase)
-      try {
-        const { data: userProfileData, error: profileError } = await supabase
-          .from('profiles')
+      // Ambil business dari tabel businesses
+      let business = null;
+      if (userProfile?.business_id) {
+        const { data: businessData, error: businessError } = await supabase
+          .from('businesses')
           .select('*')
-          .eq('id', session.value.user.id)
+          .eq('id', userProfile.business_id)
           .single();
-          
-        if (profileError && profileError.code !== 'PGRST116') throw profileError;
-        if (userProfileData) profile.value = userProfileData;
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-        // Continue even if profile fetch fails
+        if (businessError) throw businessError;
+        business = businessData;
       }
+
+      // Ambil status langganan dari tabel subscriptions
+      let latestSubscription = null;
+      if (userProfile?.business_id) {
+        const { data: subscriptions, error: subError } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('business_id', userProfile.business_id)
+          .order('created_at', { ascending: false });
+        if (subError && subError.code !== 'PGRST116') throw subError;
+        if (subscriptions && subscriptions.length > 0) {
+          latestSubscription = subscriptions[0];
+        }
+      }
+
+      // Assign organization dan subscription hanya jika berubah (shallow compare)
+      const shallowEqual = (a, b) => {
+        if (a === b) return true;
+        if (!a || !b) return false;
+        const aKeys = Object.keys(a);
+        const bKeys = Object.keys(b);
+        if (aKeys.length !== bKeys.length) return false;
+        for (const key of aKeys) {
+          if (a[key] !== b[key]) return false;
+        }
+        return true;
+      };
+
+      if (business) {
+        if (!shallowEqual(organization.value, business)) {
+          organization.value = { ...business };
+        }
+        // Assign subscription ke organization
+        if (!organization.value.subscription || !shallowEqual(organization.value.subscription, latestSubscription)) {
+          organization.value.subscription = latestSubscription ? { ...latestSubscription } : null;
+        }
+        businessProfile.value = organization.value; // alias
+      } else {
+        organization.value = null;
+        businessProfile.value = null;
+      }
+
+      // Ambil role dari tabel roles
+      if (userProfile?.role_id) {
+        const { data: roleData, error: roleError } = await supabase
+          .from('roles')
+          .select('name')
+          .eq('id', userProfile.role_id)
+          .single();
+        if (roleError) throw roleError;
+        role.value = roleData?.name || null;
+      } else {
+        role.value = null;
+      }
+
+      // Tidak ada lagi organization_features, fitur aktif bisa diatur via role/plan jika perlu
+      activeFeatures.value = [];
 
     } catch (e) {
       console.error("Error di dalam fetchUserProfile:", e.message);
@@ -200,113 +209,81 @@ export const useUserStore = defineStore('user', () => {
     }, duration);
   }
 
+
   // --- SaaS FLOW ACTIONS ---
+  // Cek session dan tentukan langkah berikutnya sesuai alur dokumentasi
   async function checkSessionAndRedirect() {
     try {
       if (!session.value?.user?.id) {
         return { next_step: 'login' };
       }
 
-      console.log('Checking session for user ID:', session.value.user.id);
-      
-      // Use direct API call without withErrorHandling wrapper to get raw response
-      const response = await apiService.getSessionInfo(session.value.user.id);
-      
-      console.log('Session API response:', response);
+      // Ambil ulang data profile dan bisnis
+      await fetchUserProfile();
 
-      // Extract data from the response structure {success: true, data: {...}}
-      const data = response.data || response;
-      
-      console.log('Extracted data:', data);
+      // Cek status onboarding dan langganan
+      if (!profile.value) return { next_step: 'login' };
 
-      // Update store with fresh data
-      if (data.organization) {
-        organization.value = data.organization;
-        role.value = data.role;
-        console.log('Updated organization:', data.organization);
-      }
-      
-      if (data.business_profile) {
-        businessProfile.value = data.business_profile;
-        console.log('Updated business profile:', data.business_profile);
+      // 1. Jika belum ada subscription, ke Payment Info
+      if (!organization.value?.subscription || organization.value.subscription.status !== 'active') {
+        return { next_step: 'payment_info' };
       }
 
-      if (data.active_features) {
-        activeFeatures.value = data.active_features;
-        console.log('Updated active features:', data.active_features);
+      // 2. Jika onboarding_status masih 'pending', ke Onboarding
+      if (organization.value?.onboarding_status !== 'completed') {
+        return { next_step: 'onboarding' };
       }
 
-      const nextStep = data.next_step || 'dashboard';
-      console.log('Determined next step:', nextStep);
-      
-      return { next_step: nextStep };
+      // 3. Jika semua sudah lengkap, ke Dashboard
+      return { next_step: 'dashboard' };
     } catch (error) {
       console.error('Session check failed:', error);
       return { next_step: 'login' };
     }
   }
 
-  async function registerTenant(registrationData) {
+  // Registrasi user baru (register Supabase Auth sudah otomatis trigger bisnis & profile)
+  async function registerTenant({ email, password, full_name }) {
     try {
-      console.log('Registering tenant with data:', registrationData);
-      
-      // Use API service method directly
-      const data = await apiService.registerTenant(registrationData);
-      
-      console.log('Registration API response:', data);
-
-      // Update store with new organization data
-      if (data.organization) {
-        organization.value = data.organization;
-        role.value = 'owner';
-      }
-
-      showNotification('Registrasi berhasil!', 'success');
-      return { success: true, next_step: data.next_step || 'login' };
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name } }
+      });
+      if (error) throw error;
+      showNotification('Registrasi berhasil! Silakan cek email untuk verifikasi.', 'success');
+      return { success: true, next_step: 'register_success' };
     } catch (error) {
-      console.error('Registration error:', error);
       showNotification(error.message, 'error');
       return { success: false, error: error.message };
     }
   }
 
+  // Selesaikan onboarding (update data bisnis)
   async function completeOnboarding(onboardingData) {
     try {
-      if (!session.value?.user?.id || !organization.value?.id) {
-        throw new Error('User session or organization not found');
-      }
-
-      console.log('Completing onboarding with data:', onboardingData);
-      
-      // Use API service method directly (no destructuring needed)
-      const data = await apiService.completeOnboarding(
-        session.value.user.id,
-        organization.value.id,
-        onboardingData
-      );
-
-      console.log('Onboarding API response:', data);
-
-      // Refresh user profile to get updated business profile
+      if (!organization.value?.id) throw new Error('Bisnis tidak ditemukan');
+      const { error } = await supabase
+        .from('businesses')
+        .update(onboardingData)
+        .eq('id', organization.value.id);
+      if (error) throw error;
       await fetchUserProfile();
-      
       showNotification('Setup bisnis berhasil!', 'success');
-      return { success: true, next_step: data.next_step || 'dashboard' };
+      return { success: true, next_step: 'dashboard' };
     } catch (error) {
-      console.error('Onboarding error:', error);
       showNotification(error.message, 'error');
       return { success: false, error: error.message };
     }
   }
 
+  // Ambil daftar paket/plan dari tabel plans
   async function getPackages() {
     try {
-      console.log('UserStore: Calling API getPackages...')
-      const data = await apiService.getPackages(); // Langsung terima data, bukan {data, error}
-      console.log('UserStore: API response:', data)
+      const { data, error } = await supabase.from('plans').select('*');
+      if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Failed to fetch packages:', error);
       return [];
     }
   }
@@ -360,15 +337,8 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function isOnboardingCompleted() {
-    const hasActiveStatus = organization.value?.status === 'active';
-    const hasBusinessProfile = !!businessProfile.value;
-    
-    console.log('Checking onboarding completion:');
-    console.log('- Organization status:', organization.value?.status);
-    console.log('- Has business profile:', hasBusinessProfile);
-    console.log('- Is completed:', hasActiveStatus && hasBusinessProfile);
-    
-    return hasActiveStatus && hasBusinessProfile;
+    // Onboarding dianggap selesai jika onboarding_status === 'completed'
+    return organization.value?.onboarding_status === 'completed';
   }
 
   return { 

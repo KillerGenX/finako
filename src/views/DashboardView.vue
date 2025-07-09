@@ -1,222 +1,172 @@
 <script setup>
-// --- Impor dari Library ---
-import { ref, onMounted, computed, watch } from "vue";
-import { useUserStore } from "@/stores/userStore";
+
+import { ref, computed, onMounted, watch } from 'vue';
+import { supabase } from '@/supabase';
+import { useUserStore } from '@/stores/userStore';
 import SalesChart from '@/components/SalesChart.vue';
 
-// --- State Management ---
 const userStore = useUserStore();
 const loading = ref(true);
 const message = ref("");
+
 const allTransactions = ref([]);
-const businessProfile = ref(null);
 const salesDataLast7Days = ref([]);
-const salesWithItems = ref([]); // State baru untuk menampung data penjualan detail
+const salesWithItems = ref([]); // Data penjualan + item bulan ini
+const businessInfo = ref(null);
 
-// --- Computed Properties ---
-
-const totalIncome = computed(() => 
-  allTransactions.value
-    .filter(tx => tx.category === "Penjualan")
-    .reduce((sum, tx) => sum + tx.amount, 0)
-);
-
-const totalExpense = computed(() => 
-  allTransactions.value
-    .filter(tx => tx.category === "Biaya Operasional")
-    .reduce((sum, tx) => sum + tx.amount, 0)
-);
-
-const finalBalance = computed(() => totalIncome.value - totalExpense.value);
-
-const bepInUnits = computed(() => {
-  if (!businessProfile.value || !businessProfile.value.avg_selling_price || !businessProfile.value.avg_variable_cost || (businessProfile.value.avg_selling_price - businessProfile.value.avg_variable_cost <= 0)) return 0;
-  const fixedCostsForBEP = businessProfile.value.fixed_costs || 0;
-  const result = fixedCostsForBEP / (businessProfile.value.avg_selling_price - businessProfile.value.avg_variable_cost);
-  return Math.ceil(result);
+// --- Computed Properties for Dashboard ---
+const totalIncome = computed(() => {
+  return allTransactions.value
+    .filter(tx => tx.type === 'income')
+    .reduce((sum, tx) => sum + (tx.amount || 0), 0);
 });
 
-const bepInRupiah = computed(() => {
-  if (!businessProfile.value || !businessProfile.value.avg_selling_price || businessProfile.value.avg_selling_price <= 0) return 0;
-  const fixedCostsForBEP = businessProfile.value.fixed_costs || 0;
-  const contributionMarginRatio = 1 - (businessProfile.value.avg_variable_cost || 0) / businessProfile.value.avg_selling_price;
-  if (contributionMarginRatio <= 0) return 0;
-  return fixedCostsForBEP / contributionMarginRatio;
+const totalExpense = computed(() => {
+  return allTransactions.value
+    .filter(tx => tx.type === 'expense')
+    .reduce((sum, tx) => sum + (tx.amount || 0), 0);
 });
 
-const monthlyIncome = computed(() => {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    return allTransactions.value
-        .filter(tx => 
-            tx.category === "Penjualan" && 
-            new Date(tx.created_at) >= startOfMonth
-        )
-        .reduce((sum, tx) => sum + tx.amount, 0);
+const finalBalance = computed(() => {
+  return totalIncome.value - totalExpense.value;
 });
 
-const bepProgressPercentage = computed(() => {
-    if (!bepInRupiah.value || bepInRupiah.value === 0) return 0;
-    const percentage = (monthlyIncome.value / bepInRupiah.value) * 100;
-    return Math.min(percentage, 100);
-});
+// For BEP analysis, use businessInfo as businessProfile
+const businessProfile = computed(() => businessInfo.value);
 
-const bepEstimationDays = computed(() => {
-    if (!bepInRupiah.value || bepInRupiah.value <= 0) return 'Data BEP belum lengkap';
-    if (monthlyIncome.value >= bepInRupiah.value) return 'Target BEP Bulan Ini Tercapai!';
-    if (monthlyIncome.value <= 0) return 'Belum ada penjualan bulan ini';
-    
-    const now = new Date();
-    const currentDay = now.getDate();
-    const avgDailySales = monthlyIncome.value / currentDay;
-    if (avgDailySales <= 0) return 'Menunggu penjualan...';
-
-    const remainingBEP = bepInRupiah.value - monthlyIncome.value;
-    const daysNeeded = Math.ceil(remainingBEP / avgDailySales);
-
-    return `Estimasi ${daysNeeded} hari lagi`;
-});
-
+// Chart data for SalesChart
 const chartData = computed(() => {
   if (!salesDataLast7Days.value || salesDataLast7Days.value.length === 0) return null;
-  const labels = salesDataLast7Days.value.map(item => new Date(item.sale_day).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric' }));
-  const data = salesDataLast7Days.value.map(item => item.total_amount);
   return {
-    labels: labels,
-    datasets: [{
-      label: 'Penjualan',
-      backgroundColor: 'rgba(75, 192, 192, 0.2)',
-      borderColor: 'rgba(75, 192, 192, 1)',
-      borderWidth: 2, fill: true, data: data, tension: 0.3
-    }]
+    labels: salesDataLast7Days.value.map(item => item.date),
+    datasets: [
+      {
+        label: 'Penjualan',
+        data: salesDataLast7Days.value.map(item => item.total_sales),
+        backgroundColor: '#4ade80',
+        borderColor: '#22c55e',
+        fill: true,
+        tension: 0.4,
+      },
+    ],
   };
 });
 
-// Kalkulasi Top 3 Produk yang sudah diperbaiki
-const topSellingProducts = computed(() => {
-  if (salesWithItems.value.length === 0) return [];
-
-  const productQuantities = {};
-
-  salesWithItems.value.forEach(sale => {
-    if (sale.items && Array.isArray(sale.items)) {
-      sale.items.forEach(item => {
-        if(item.name && item.quantity) {
-           productQuantities[item.name] = (productQuantities[item.name] || 0) + item.quantity;
-        }
-      });
-    }
-  });
-
-  return Object.entries(productQuantities)
-    .sort(([, qtyA], [, qtyB]) => qtyB - qtyA)
-    .slice(0, 3)
-    .map(([name, quantity]) => ({ name, quantity }));
+// Dummy BEP calculation (replace with real logic if needed)
+const bepInUnits = computed(() => {
+  const fixedCost = businessProfile.value?.fixed_cost || 0;
+  const price = businessProfile.value?.average_price || 1;
+  const variableCost = businessProfile.value?.variable_cost || 0;
+  if (price - variableCost === 0) return 0;
+  return Math.ceil(fixedCost / (price - variableCost));
+});
+const bepInRupiah = computed(() => {
+  return bepInUnits.value * (businessProfile.value?.average_price || 0);
+});
+const bepProgressPercentage = computed(() => {
+  if (!bepInRupiah.value) return 0;
+  // Total penjualan bulan ini
+  const monthIncome = salesWithItems.value.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+  return Math.min(100, (monthIncome / bepInRupiah.value) * 100);
+});
+const bepEstimationDays = computed(() => {
+  // Estimasi hari tercapai BEP bulan ini
+  if (!bepInRupiah.value) return '-';
+  const monthIncome = salesWithItems.value.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+  const days = new Date().getDate();
+  if (monthIncome === 0 || days === 0) return '-';
+  const daily = monthIncome / days;
+  if (daily === 0) return '-';
+  const remaining = bepInRupiah.value - monthIncome;
+  if (remaining <= 0) return 'Target tercapai!';
+  const est = Math.ceil(remaining / daily);
+  return `Estimasi ${est} hari lagi`;
 });
 
-// --- Fungsi Logika Pengambilan Data ---
+// Ambil data penjualan bulan ini beserta item dan nama produk dari Supabase
+async function fetchSalesWithItems() {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Query transactions bulan ini milik bisnis aktif
+    const { data: transactions, error } = await supabase
+      .from('transactions')
+      .select('*, transaction_items(*, product:product_id(name))')
+      .eq('business_id', userStore.organization.id)
+      .gte('created_at', startOfMonth.toISOString())
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    // Mapping agar struktur konsisten
+    return (transactions || []).map(tx => ({
+      ...tx,
+      items: (tx.transaction_items || []).map(item => ({
+        ...item,
+        product_name: item.product?.name || ''
+      }))
+    }));
+  } catch (err) {
+    message.value = err.message || 'Gagal memuat data penjualan.';
+    return [];
+  }
+}
 
-async function fetchAllDashboardData() {
-  if (!userStore.organization?.id) { loading.value = false; return; }
+// --- Data Fetching ---
+async function fetchDashboardData() {
   loading.value = true;
   try {
-    await Promise.all([
-      getAllTransactions(), 
-      getSalesWithItems(),
-      fetchSalesDataForChart()
-      // getBusinessProfile(),
-    ]);
+    // Fetch transactions (Penjualan & Biaya)
+    const { data: transactions, error: txError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('business_id', userStore.organization.id)
+      .order('created_at', { ascending: false });
+    if (txError) throw txError;
+    allTransactions.value = transactions || [];
+
+    // Fetch business info (tax, service charge, dsb)
+    const { data: biz, error: bizError } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('id', userStore.organization.id)
+      .single();
+    if (bizError) throw bizError;
+    businessInfo.value = biz;
+
+    // Fetch sales with items (bulan ini)
+    salesWithItems.value = await fetchSalesWithItems();
+
+    // Fetch sales data for chart (7 hari terakhir)
+    const { data: sales7, error: sales7Error } = await supabase
+      .rpc('get_sales_last_7_days', { business_id: userStore.organization.id });
+    salesDataLast7Days.value = sales7Error ? [] : (sales7 || []);
   } catch (error) {
-    console.error("Terjadi error saat mengambil data dashboard:", error);
-    message.value = "Gagal memuat data dashboard.";
+    message.value = error.message || 'Gagal memuat data dashboard.';
   } finally {
     loading.value = false;
   }
 }
+// Top 3 produk terlaris bulan ini dari salesWithItems
+const topSellingProducts = computed(() => {
+  if (!salesWithItems.value.length) return [];
+  const productMap = {};
+  salesWithItems.value.forEach(tx => {
+    (tx.items || []).forEach(item => {
+      if (!item.product_name) return;
+      productMap[item.product_name] = (productMap[item.product_name] || 0) + (item.quantity || 0);
+    });
+  });
+  return Object.entries(productMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name, quantity]) => ({ name, quantity }));
+});
 
-async function getAllTransactions() {
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transactions`);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    // Mapping agar selalu ada field created_at untuk kebutuhan frontend
-    allTransactions.value = data.map(tx => ({
-      ...tx,
-      created_at: tx.created_at || tx.date // fallback ke date jika created_at tidak ada
-    }));
-  } catch (error) {
-    throw error;
-  }
-}
-
-// Fungsi baru untuk mengambil data dari tabel 'sales'
-async function getSalesWithItems() {
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/sales`);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // Filter data bulan ini di frontend untuk sementara
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    
-    const filteredData = data.filter(sale => 
-      new Date(sale.created_at) >= startOfMonth
-    );
-    
-    // Mapping agar selalu ada field created_at
-    salesWithItems.value = filteredData.map(sale => ({
-      ...sale,
-      created_at: sale.created_at || sale.date
-    }));
-  } catch (error) {
-    throw error;
-  }
-}
-
-// TODO: Migrasi setelah endpoint ready
-async function getBusinessProfile() {
-  // Sementara set null agar tidak error
-  businessProfile.value = null;
-  
-  // Original Supabase code (commented):
-  // const { data, error } = await supabase.from("business_profiles").select("*").eq('organization_id', userStore.organization.id).single();
-  // if (error && error.code !== "PGRST116") throw error;
-  // if (data) businessProfile.value = data;
-}
-
-
-// Ambil data penjualan 7 hari terakhir dari backend
-async function fetchSalesDataForChart() {
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/dashboard`);
-    if (!response.ok) throw new Error('Gagal mengambil data dashboard');
-    const data = await response.json();
-    // Mapping agar selalu ada field sale_day
-    salesDataLast7Days.value = (data.sales_last_7_days || []).map(item => ({
-      ...item,
-      sale_day: item.sale_day || item.date
-    }));
-  } catch (error) {
-    salesDataLast7Days.value = [];
-  }
-}
-
-// --- Lifecycle Hooks ---
-onMounted(fetchAllDashboardData);
+onMounted(() => {
+  if (userStore.organization?.id) fetchDashboardData();
+});
 
 watch(() => userStore.isReady, (ready) => {
-  if(ready && allTransactions.value.length === 0) {
-    fetchAllDashboardData();
-  }
+  if (ready && userStore.organization?.id) fetchDashboardData();
 });
 
 </script>

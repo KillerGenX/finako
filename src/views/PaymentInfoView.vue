@@ -16,10 +16,18 @@
         </p>
       </div>
 
+
       <!-- Status Card -->
-      <div class="bg-white rounded-lg shadow-xl p-8">
+      <div class="bg-white rounded-lg shadow-xl p-8 relative">
+        <!-- Loading Overlay -->
+        <div v-if="isChecking" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 z-50">
+          <svg class="animate-spin h-8 w-8 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
         <!-- Organization Info -->
-        <div v-if="organizationInfo" class="mb-6">
+        <div v-if="organizationInfo && userProfile" class="mb-6">
           <h2 class="text-lg font-semibold text-gray-900 mb-4">Informasi Organisasi</h2>
           <div class="space-y-3">
             <div class="flex justify-between">
@@ -30,41 +38,47 @@
               <span class="text-sm text-gray-600">Email:</span>
               <span class="text-sm font-medium text-gray-900">{{ userProfile?.email }}</span>
             </div>
-            <div class="flex justify-between">
-              <span class="text-sm text-gray-600">Paket:</span>
-              <span class="text-sm font-medium text-gray-900">{{ organizationInfo.package_id || 'Starter' }}</span>
+          </div>
+        </div>
+
+        <!-- PILIH PAKET -->
+        <div v-if="!isChecking && !subscription">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">Pilih Paket Langganan</h2>
+          <form @submit.prevent="handleChoosePackage" class="space-y-4">
+            <div>
+              <label for="packageId" class="block text-sm font-medium text-gray-700 mb-2">Paket</label>
+              <select id="packageId" v-model="selectedPackageId" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <option value="">Pilih paket</option>
+                <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
+                  {{ pkg.name }} - Rp {{ pkg.price.toLocaleString('id-ID') }}/bulan
+                </option>
+              </select>
             </div>
-            <div class="flex justify-between">
-              <span class="text-sm text-gray-600">Status:</span>
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                    :class="getStatusClass(organizationInfo.status)">
-                {{ getStatusText(organizationInfo.status) }}
-              </span>
+            <button type="submit" :disabled="isSubmitting || !selectedPackageId" class="w-full py-2 px-4 rounded-md bg-yellow-500 text-white font-semibold hover:bg-yellow-600 disabled:opacity-50">
+              {{ isSubmitting ? 'Memproses...' : 'Pilih Paket & Lanjutkan' }}
+            </button>
+          </form>
+        </div>
+
+        <!-- INSTRUKSI PEMBAYARAN -->
+        <div v-else-if="!isChecking && subscription && subscription.status === 'pending'">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">Instruksi Pembayaran</h2>
+          <div class="mb-4">
+            <p class="text-sm text-gray-700">Silakan lakukan pembayaran sesuai paket yang dipilih untuk mengaktifkan langganan Anda.</p>
+            <ul class="mt-2 text-sm text-gray-600">
+              <li>Paket: <span class="font-medium text-gray-900">{{ packages.find(p=>p.id===subscription.plan_id)?.name || 'Paket' }}</span></li>
+              <li>Harga: <span class="font-medium text-gray-900">Rp {{ packages.find(p=>p.id===subscription.plan_id)?.price?.toLocaleString('id-ID') }}</span></li>
+              <li>Status: <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Menunggu Pembayaran</span></li>
+            </ul>
+            <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p class="text-xs text-yellow-700">Transfer ke rekening BCA 1234567890 a.n. PT Finako Digital (contoh). Setelah pembayaran, admin akan mengaktifkan langganan Anda.</p>
             </div>
           </div>
         </div>
 
-        <!-- Status Message -->
-        <div class="text-center mb-6">
-          <div v-if="organizationInfo?.status === 'pending'" class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <h3 class="text-sm font-medium text-yellow-800">
-                  Registrasi Sedang Diproses
-                </h3>
-                <div class="mt-2 text-sm text-yellow-700">
-                  <p>Tim admin kami akan memverifikasi data Anda dalam 1-2 hari kerja. Anda akan menerima email konfirmasi setelah akun disetujui.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-else-if="organizationInfo?.status === 'rejected'" class="bg-red-50 border border-red-200 rounded-md p-4">
+        <!-- STATUS DITOLAK -->
+        <div v-else-if="!isChecking && subscription && subscription.status === 'rejected'">
+          <div class="bg-red-50 border border-red-200 rounded-md p-4">
             <div class="flex">
               <div class="flex-shrink-0">
                 <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
@@ -76,7 +90,7 @@
                   Registrasi Ditolak
                 </h3>
                 <div class="mt-2 text-sm text-red-700">
-                  <p>Mohon maaf, registrasi Anda tidak dapat diproses. Silakan hubungi support untuk informasi lebih lanjut.</p>
+                  <p>Mohon maaf, registrasi/langganan Anda tidak dapat diproses. Silakan hubungi support untuk informasi lebih lanjut.</p>
                 </div>
               </div>
             </div>
@@ -143,9 +157,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/userStore'
+import { supabase } from '@/supabase'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -157,10 +172,17 @@ const autoRefreshInterval = ref(30000) // 30 seconds
 const nextRefreshCountdown = ref(30)
 const autoRefreshTimer = ref(null)
 const countdownTimer = ref(null)
+const isInitialized = ref(false)
 
 // Computed
 const organizationInfo = computed(() => userStore.organization)
 const userProfile = computed(() => userStore.profile)
+const subscription = computed(() => organizationInfo.value?.subscription || null)
+
+// Paket/plan
+const packages = ref([])
+const selectedPackageId = ref('')
+const isSubmitting = ref(false)
 
 // Status helpers
 function getStatusClass(status) {
@@ -193,38 +215,67 @@ function getStatusText(status) {
   }
 }
 
-// Check organization status
+
+// Check subscription status and redirect if needed
 async function checkStatus() {
   if (isChecking.value) return
-  
   isChecking.value = true
-  
   try {
-    const sessionData = await userStore.checkSessionAndRedirect()
-    
-    // Handle different status results
-    switch (sessionData.next_step) {
-      case 'onboarding':
-        console.log('Status approved! Redirecting to onboarding...')
-        router.push('/onboarding')
-        break
-      case 'dashboard':
-        console.log('Setup complete! Redirecting to dashboard...')
-        router.push('/')
-        break
-      case 'payment_info':
-        // Still pending, stay on this page
-        console.log('Still pending approval')
-        break
-      default:
-        console.log('Status check result:', sessionData.next_step)
-        break
+    await userStore.fetchUserProfile()
+    // Refresh organization & subscription
+    if (subscription.value && subscription.value.status === 'active') {
+      // Hentikan auto-refresh sebelum redirect
+      cleanup()
+      // Langganan sudah aktif, redirect ke onboarding/dashboard
+      if (organizationInfo.value?.onboarding_status !== 'completed') {
+        router.replace('/onboarding')
+      } else {
+        router.replace('/')
+      }
+      return
     }
+    // Jika status pending, tetap di halaman ini (instruksi pembayaran)
+    // Jika belum ada subscription, tetap di halaman ini (form pilih paket)
   } catch (error) {
     console.error('Status check failed:', error)
     userStore.showNotification('Gagal memeriksa status. Silakan coba lagi.', 'error')
   } finally {
     isChecking.value = false
+  }
+}
+
+// Ambil daftar paket/plan
+async function loadPackages() {
+  try {
+    packages.value = await userStore.getPackages() || []
+  } catch (e) {
+    packages.value = []
+  }
+}
+
+// Submit pilih paket
+async function handleChoosePackage() {
+  if (!selectedPackageId.value) return
+  isSubmitting.value = true
+  try {
+    // Insert subscription baru (status pending)
+    const { error } = await supabase
+  .from('subscriptions')
+  .insert({ 
+        business_id: organizationInfo.value.id,
+        plan_id: selectedPackageId.value,
+        status: 'pending',
+        start_date: new Date().toISOString(),
+        end_date: new Date().toISOString(),
+      })
+    if (error) throw error
+    userStore.showNotification('Paket berhasil dipilih. Silakan lakukan pembayaran.', 'success')
+    await userStore.fetchUserProfile()
+    await checkStatus()
+  } catch (e) {
+    userStore.showNotification(e.message || 'Gagal memilih paket', 'error')
+  } finally {
+    isSubmitting.value = false
   }
 }
 
@@ -256,6 +307,11 @@ function setupAutoRefresh() {
 
   // Auto refresh timer
   autoRefreshTimer.value = setInterval(() => {
+    // Jangan auto-refresh jika sudah redirect (misal: subscription active)
+    if (subscription.value && subscription.value.status === 'active') {
+      cleanup()
+      return
+    }
     checkStatus()
     nextRefreshCountdown.value = autoRefreshInterval.value / 1000
   }, autoRefreshInterval.value)
@@ -273,13 +329,20 @@ function cleanup() {
   }
 }
 
-// Initialize page
+
+
+// Only run checkStatus and auto-refresh once after first data ready
 onMounted(async () => {
-  // Initial status check
+  await loadPackages()
   await checkStatus()
-  
-  // Setup auto refresh
-  setupAutoRefresh()
+  isInitialized.value = true
+})
+
+// Setup auto-refresh only once after first checkStatus
+watch(isInitialized, (val) => {
+  if (val && (!subscription.value || subscription.value.status !== 'active')) {
+    setupAutoRefresh()
+  }
 })
 
 // Cleanup on unmount

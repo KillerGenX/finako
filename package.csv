@@ -1,4 +1,0 @@
-id,name,price,user_limit,features
-basic,Basic,49000,2,"[""pos"",""expenses"",""bep"",""employee_management""]"
-enterprise,Enterprise,249000,20,"[""pos"",""expenses"",""bep"",""reports"",""stock_management"",""employee_management"",""employee_attendance"",""customer_data""]"
-pro,Pro,99000,5,"[""pos"",""expenses"",""bep"",""reports"",""stock_management"",""employee_management"",""customer_data""]"
