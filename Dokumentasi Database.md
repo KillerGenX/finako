@@ -1,22 +1,3 @@
-Blueprint Database Finako v1.0
-Berikut adalah draf awal skema database komprehensif yang dirancang berdasarkan semua kebutuhan yang telah kita identifikasi. Skema ini sudah mencakup dukungan untuk:
-
-Multi-Tenancy (setiap data terikat pada business_id)
-
-Manajemen Langganan (Basic/Pro)
-
-Produk dengan Varian
-
-Manajemen Stok (Produk Jadi & Bahan Baku/Resep)
-
-Transaksi dengan Diskon
-
-Peran Pengguna (Owner, Kasir, Manajer)
-
-Multi-Cabang
-
-Absensi Pegawai
-
 -- DRAFT SKEMA DATABASE FINAKO v1.0 (REVISI PERMISSION)
 
 -- =================================================================
@@ -96,7 +77,6 @@ CREATE TABLE public.ingredients (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     business_id UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
-    stock_quantity NUMERIC(10, 2) NOT NULL DEFAULT 0,
     unit VARCHAR(20) NOT NULL
 );
 
@@ -107,8 +87,8 @@ CREATE TABLE public.products (
     name TEXT NOT NULL,
     description TEXT,
     has_variants BOOLEAN NOT NULL DEFAULT false,
-    stock_quantity INTEGER DEFAULT 0,
-    is_composite BOOLEAN NOT NULL DEFAULT false
+    is_composite BOOLEAN NOT NULL DEFAULT false,
+    photo_url TEXT -- URL foto produk di Supabase Storage
 );
 
 CREATE TABLE public.product_variants (
@@ -127,6 +107,53 @@ CREATE TABLE public.product_recipes (
     quantity_used NUMERIC(10, 2) NOT NULL
 );
 
+CREATE TABLE public.product_outlets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+    outlet_id UUID NOT NULL REFERENCES public.outlets(id) ON DELETE CASCADE,
+    stock_quantity INTEGER DEFAULT 0,
+    price INTEGER,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    UNIQUE (product_id, outlet_id)
+);
+
+CREATE TABLE public.ingredient_outlets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ingredient_id UUID NOT NULL REFERENCES public.ingredients(id) ON DELETE CASCADE,
+    outlet_id UUID NOT NULL REFERENCES public.outlets(id) ON DELETE CASCADE,
+    stock_quantity NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    min_stock NUMERIC(10, 2),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    UNIQUE (ingredient_id, outlet_id)
+);
+
+-- Tabel untuk stok & harga varian produk per outlet (untuk produk dengan varian)
+CREATE TABLE public.product_variant_outlets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    variant_id UUID NOT NULL REFERENCES public.product_variants(id) ON DELETE CASCADE,
+    outlet_id UUID NOT NULL REFERENCES public.outlets(id) ON DELETE CASCADE,
+    stock_quantity INTEGER DEFAULT 0,
+    price INTEGER,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    UNIQUE (variant_id, outlet_id)
+);
+
+-- Tabel Mutasi Stok Bahan Baku per Outlet
+CREATE TABLE public.ingredient_stock_movements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ingredient_id UUID NOT NULL REFERENCES public.ingredients(id) ON DELETE CASCADE,
+    outlet_id UUID NOT NULL REFERENCES public.outlets(id) ON DELETE CASCADE,
+    movement_type VARCHAR(20) NOT NULL, -- masuk, keluar, penyesuaian, transfer
+    quantity NUMERIC(10, 2) NOT NULL,
+    ref TEXT, -- keterangan atau referensi transaksi
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
 
 -- =================================================================
 -- Tabel Transaksi
@@ -232,54 +259,3 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
-
-Aplikasi ini menggunakan Supabase auto-generated API
-Supabase secara otomatis membuat RESTful API untuk setiap tabel yang Anda buat di database 
-
-Alur Autentikasi Finako (Versi Baru)
-Register
-
-User mendaftar dengan email, password, dan nama pemilik (full_name).
-Data dikirim ke Supabase Auth.
-Trigger Supabase otomatis membuat bisnis dan profil user.
-Register Success
-
-User diarahkan ke halaman sukses.
-Instruksi: cek email untuk verifikasi dan lanjut login.
-Login
-
-User login menggunakan email & password.
-Setelah login, aplikasi fetch profil user dan data bisnis.
-Payment Info (Pilih Paket & Pembayaran)
-
-Jika bisnis belum punya langganan aktif (subscriptions.status !== 'active'), user diarahkan ke halaman Payment Info.
-Jika belum memilih paket: tampilkan form pemilihan paket.
-Jika sudah memilih paket tapi status masih pending: tampilkan instruksi pembayaran dan status langganan.
-Setelah pembayaran dikonfirmasi (oleh admin atau otomatis), status langganan diubah menjadi active.
-Onboarding
-
-Jika langganan sudah aktif, user diarahkan ke halaman onboarding untuk melengkapi data bisnis (alamat, cabang, dsb).
-Setelah data onboarding lengkap, field onboarding_status di tabel businesses diubah menjadi completed.
-Dashboard
-
-Jika langganan aktif dan onboarding selesai, user bisa mengakses dashboard dan seluruh fitur aplikasi.
-Ringkasan: Register → Register Success → Login → Payment Info (pilih paket & bayar) → [status pending] → [status active] → Onboarding → Dashboard
-
-Catatan:
-
-Selama status langganan masih pending, user hanya bisa mengakses halaman pembayaran.
-Setelah status langganan active dan onboarding selesai, user bisa mengakses dashboard.
-Semua proses backend langsung ke Supabase, tanpa backend custom.
-
-# 1. Supabase Client (untuk berinteraksi dengan database dan auth)
-npm install @supabase/supabase-js
-
-# 2. Vue Router (untuk navigasi antar halaman)
-npm install vue-router@4
-
-# 3. Pinia (untuk state management global, menyimpan info user & plan)
-npm install pinia
-
-# 4. Tailwind CSS & DaisyUI (untuk styling)
-npm install -D tailwindcss postcss autoprefixer daisyui

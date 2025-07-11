@@ -63,6 +63,7 @@ export const useUserStore = defineStore('user', () => {
 
       // Ambil status langganan dari tabel subscriptions
       let latestSubscription = null;
+      let planName = null;
       if (userProfile?.business_id) {
         const { data: subscriptions, error: subError } = await supabase
           .from('subscriptions')
@@ -72,6 +73,16 @@ export const useUserStore = defineStore('user', () => {
         if (subError && subError.code !== 'PGRST116') throw subError;
         if (subscriptions && subscriptions.length > 0) {
           latestSubscription = subscriptions[0];
+          // Ambil nama plan dari tabel plans
+          if (latestSubscription.plan_id) {
+            const { data: planData, error: planError } = await supabase
+              .from('plans')
+              .select('name')
+              .eq('id', latestSubscription.plan_id)
+              .single();
+            if (planError) throw planError;
+            planName = planData?.name || null;
+          }
         }
       }
 
@@ -94,7 +105,7 @@ export const useUserStore = defineStore('user', () => {
         }
         // Assign subscription ke organization
         if (!organization.value.subscription || !shallowEqual(organization.value.subscription, latestSubscription)) {
-          organization.value.subscription = latestSubscription ? { ...latestSubscription } : null;
+          organization.value.subscription = latestSubscription ? { ...latestSubscription, plan_name: planName } : null;
         }
         businessProfile.value = organization.value; // alias
       } else {

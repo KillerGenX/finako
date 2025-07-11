@@ -268,14 +268,9 @@ async function handleSubmit() {
       onboarding_status: 'completed',
     }
 
-    // Update tabel businesses
-    const { error: businessError } = await userStore.session && userStore.organization?.id
-      ? userStore.supabase
-        .from('businesses')
-        .update(businessUpdate)
-        .eq('id', userStore.organization.id)
-      : { error: { message: 'User/organization not found' } }
-    if (businessError) throw businessError
+    // Update bisnis & onboarding status via userStore action
+    const { success, next_step, error: onboardingError } = await userStore.completeOnboarding(businessUpdate)
+    if (!success) throw new Error(onboardingError || 'Gagal update data bisnis')
 
     // Insert outlet utama jika belum ada (opsional: bisa dicek dulu)
     const outletInsert = {
@@ -284,13 +279,12 @@ async function handleSubmit() {
       address: form.value.outlet_address,
     }
     // Cek apakah outlet utama sudah ada (bisa diimprove, sekarang insert saja)
-    const { error: outletError } = await userStore.supabase
+    const { error: outletError } = await supabase
       .from('outlets')
       .insert([outletInsert])
     if (outletError) throw outletError
 
-    // Sukses, refresh profile dan redirect
-    await userStore.fetchUserProfile()
+    // Sukses, redirect ke dashboard
     router.push('/')
   } catch (error) {
     console.error('Onboarding error:', error)
