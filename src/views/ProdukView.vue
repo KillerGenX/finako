@@ -148,6 +148,11 @@
             <button class="btn btn-outline btn-sm" @click="showVarianModal = true">Kelola Varian</button>
             <span v-if="formVarian.length" class="ml-2 text-xs text-gray-500">({{ formVarian.length }} varian)</span>
           </div>
+          <!-- Tombol Kelola Resep Produk Komposit -->
+          <div v-if="form.is_composite" class="mb-2">
+            <button class="btn btn-outline btn-sm" @click="showRecipeModal = true">Kelola Resep</button>
+            <span v-if="formRecipe.length" class="ml-2 text-xs text-gray-500">({{ formRecipe.length }} bahan)</span>
+          </div>
         </div>
         <div class="flex justify-end gap-2 mt-4">
           <button class="btn" @click="closeModal">Batal</button>
@@ -318,6 +323,42 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Kelola Resep Produk Komposit -->
+    <div v-if="showRecipeModal" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+      <div class="bg-white p-6 rounded shadow w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <h3 class="text-lg font-bold mb-4">Kelola Resep Produk Komposit</h3>
+        <div class="flex flex-col md:flex-row gap-2 items-end mb-2">
+          <select v-model="recipeForm.ingredient_id" class="select select-bordered w-full md:w-1/2">
+            <option value="">Pilih Bahan Baku</option>
+            <option v-for="item in ingredients" :key="item.id" :value="item.id">{{ item.name }} ({{ item.unit }})</option>
+          </select>
+          <input v-model.number="recipeForm.quantity_used" type="number" min="0" placeholder="Jumlah" class="input input-bordered w-full md:w-1/4" />
+          <button @click="addRecipe" class="btn btn-primary">{{ editingRecipeIndex !== null ? 'Update' : 'Tambah' }}</button>
+          <button v-if="editingRecipeIndex !== null" @click="resetRecipeForm" class="btn btn-secondary">Batal</button>
+        </div>
+        <table class="table w-full text-sm mb-2">
+          <thead>
+            <tr><th>Bahan</th><th>Jumlah</th><th>Satuan</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="(r, idx) in formRecipe" :key="idx">
+              <td>{{ r.ingredient_name }}</td>
+              <td>{{ r.quantity_used }}</td>
+              <td>{{ r.unit }}</td>
+              <td>
+                <button @click="editRecipe(idx)" class="btn btn-xs btn-info mr-1">Edit</button>
+                <button @click="deleteRecipe(idx)" class="btn btn-xs btn-error">Hapus</button>
+              </td>
+            </tr>
+            <tr v-if="formRecipe.length === 0"><td colspan="4" class="text-center text-gray-400">Belum ada bahan</td></tr>
+          </tbody>
+        </table>
+        <div class="flex justify-end mt-4">
+          <button class="btn" @click="showRecipeModal = false">Selesai</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -365,6 +406,13 @@ const variantStockLoading = ref(false);
 const productVariantStocks = ref({}); // { [productId]: totalStock }
 const showDeleteCategoryConfirm = ref(false);
 const categoryToDelete = ref(null);
+const formRecipe = ref([]); // [{ingredient_id, quantity_used, ingredient_name, unit}]
+const showRecipeModal = ref(false);
+const recipeForm = ref({ ingredient_id: '', quantity_used: 0 });
+const editingRecipeIndex = ref(null);
+const ingredients = ref([]); // Tambahkan deklarasi state untuk bahan baku
+const productRecipes = ref({}); // { [productId]: [{ingredient_id, quantity_used}] }
+const ingredientStocks = ref([]); // Pastikan deklarasi di atas semua fungsi
 
 const paginatedProducts = computed(() => {
   let filtered = products.value;
@@ -388,10 +436,25 @@ function getProductStock(productId) {
   const prod = products.value.find(p => p.id === productId);
   if (!prod) return 0;
   if (prod.has_variants) {
-    // Ambil dari cache total stok varian
     return productVariantStocks.value[productId] ?? '-';
+  } else if (prod.is_composite) {
+    // Produk komposit: hitung estimasi stok dari bahan baku
+    // Ambil resep produk dari cache
+    const recipe = productRecipes.value[productId] || [];
+    if (!recipe.length) {
+      return '-';
+    }
+    let minStock = Infinity;
+    for (const r of recipe) {
+      const stockRow = ingredientStocks.value.find(i => i.ingredient_id === r.ingredient_id);
+      const stock = stockRow?.stock_quantity ?? 0;
+      if (r.quantity_used > 0) {
+        const possible = Math.floor(stock / r.quantity_used);
+        if (possible < minStock) minStock = possible;
+      }
+    }
+    return minStock === Infinity ? '-' : minStock;
   } else {
-    // Produk tanpa varian, ambil dari productStocks
     return productStocks.value[productId] ?? 0;
   }
 }
@@ -419,6 +482,9 @@ async function fetchProducts() {
   const { data } = await query;
   products.value = data || [];
   page.value = 1;
+  // Pastikan data bahan baku dan resep di-refresh setelah produk diambil
+  await fetchIngredientStocks();
+  await fetchAllProductRecipes();
 }
 
 async function fetchProductStocksAndPrices() {
@@ -518,6 +584,39 @@ async function fetchProductVariants(productId) {
   }
 }
 
+async function fetchProductRecipe(productId) {
+  const { data, error } = await supabase.from('product_recipes').select('*, ingredients(name, unit)').eq('product_id', productId);
+  if (error) {
+    formRecipe.value = [];
+  } else {
+    formRecipe.value = (data || []).map(r => ({
+      ingredient_id: r.ingredient_id,
+      quantity_used: r.quantity_used,
+      ingredient_name: r.ingredients?.name || '-',
+      unit: r.ingredients?.unit || '-'
+    }));
+  }
+}
+
+async function fetchAllProductRecipes() {
+  if (!products.value.length) return;
+  const productIds = products.value.map(p => p.id);
+  const { data, error } = await supabase
+    .from('product_recipes')
+    .select('product_id, ingredient_id, quantity_used')
+    .in('product_id', productIds);
+  productRecipes.value = {};
+  if (data) {
+    for (const row of data) {
+      if (!productRecipes.value[row.product_id]) productRecipes.value[row.product_id] = [];
+      productRecipes.value[row.product_id].push({
+        ingredient_id: row.ingredient_id,
+        quantity_used: row.quantity_used
+      });
+    }
+  }
+}
+
 function resetForm() {
   form.value = {
     name: '',
@@ -527,12 +626,19 @@ function resetForm() {
     is_composite: false
   };
   formVarian.value = [];
+  formRecipe.value = [];
   resetVarianForm();
+  resetRecipeForm();
 }
 
 function resetVarianForm() {
   varianForm.value = { name: '', price: 0, sku: '' };
   editingVarianIndex.value = null;
+}
+
+function resetRecipeForm() {
+  recipeForm.value = { ingredient_id: '', quantity_used: 0 };
+  editingRecipeIndex.value = null;
 }
 
 function validateForm() {
@@ -582,6 +688,18 @@ async function addProduct() {
       alert('Gagal menyimpan varian: ' + varianError.message);
     }
   }
+  // Insert resep produk komposit jika ada
+  if (form.value.is_composite && formRecipe.value.length > 0) {
+    const recipePayload = formRecipe.value.map(r => ({
+      product_id: productId,
+      ingredient_id: r.ingredient_id,
+      quantity_used: r.quantity_used
+    }));
+    const { error: recipeError } = await supabase.from('product_recipes').insert(recipePayload);
+    if (recipeError) {
+      alert('Gagal menyimpan resep: ' + recipeError.message);
+    }
+  }
   closeModal();
   fetchProducts();
 }
@@ -628,6 +746,26 @@ async function editProduct() {
   } else {
     // Jika has_variants dimatikan, hapus semua varian
     await supabase.from('product_variants').delete().eq('product_id', selectedProduct.value.id);
+  }
+  // Sync resep produk komposit
+  if (form.value.is_composite) {
+    // Hapus semua resep lama
+    await supabase.from('product_recipes').delete().eq('product_id', selectedProduct.value.id);
+    // Insert ulang
+    if (formRecipe.value.length > 0) {
+      const recipePayload = formRecipe.value.map(r => ({
+        product_id: selectedProduct.value.id,
+        ingredient_id: r.ingredient_id,
+        quantity_used: r.quantity_used
+      }));
+      const { error: recipeError } = await supabase.from('product_recipes').insert(recipePayload);
+      if (recipeError) {
+        alert('Gagal menyimpan resep: ' + recipeError.message);
+      }
+    }
+  } else {
+    // Jika is_composite dimatikan, hapus semua resep
+    await supabase.from('product_recipes').delete().eq('product_id', selectedProduct.value.id);
   }
   closeModal();
   await fetchProducts();
@@ -728,6 +866,8 @@ function openEditModal(prod) {
   photoPreview.value = '';
   // Fetch varian dari Supabase
   fetchProductVariants(prod.id);
+  // Fetch resep produk komposit
+  fetchProductRecipe(prod.id);
   showModal.value = true;
 }
 
@@ -880,15 +1020,66 @@ function openViewVarianModal(prod) {
     });
 }
 
+async function fetchIngredients() {
+  const { data, error } = await supabase.from('ingredients').select('*').eq('business_id', businessId.value);
+  ingredients.value = data || [];
+}
+
+async function addRecipe() {
+  if (!recipeForm.value.ingredient_id || recipeForm.value.quantity_used <= 0) {
+    alert('Bahan dan jumlah wajib diisi');
+    return;
+  }
+  // Cari nama dan satuan bahan
+  const ingredient = ingredients.value.find(i => i.id === recipeForm.value.ingredient_id);
+  const newRecipe = {
+    ingredient_id: recipeForm.value.ingredient_id,
+    quantity_used: recipeForm.value.quantity_used,
+    ingredient_name: ingredient?.name || '-',
+    unit: ingredient?.unit || '-'
+  };
+  if (editingRecipeIndex.value !== null) {
+    formRecipe.value[editingRecipeIndex.value] = newRecipe;
+  } else {
+    formRecipe.value.push(newRecipe);
+  }
+  resetRecipeForm();
+}
+function editRecipe(idx) {
+  editingRecipeIndex.value = idx;
+  recipeForm.value = { ...formRecipe.value[idx] };
+}
+function deleteRecipe(idx) {
+  formRecipe.value.splice(idx, 1);
+  resetRecipeForm();
+}
+
+async function fetchIngredientStocks() {
+  if (!selectedOutlet.value) return;
+  // Ambil stok bahan baku per outlet, join ke ingredients
+  const { data, error } = await supabase
+    .from('ingredient_outlets')
+    .select('ingredient_id, stock_quantity, is_active, ingredients(name, unit)')
+    .eq('outlet_id', selectedOutlet.value);
+  // Filter hanya stok yang aktif
+  ingredientStocks.value = (data || []).filter(row => row.is_active === true).map(row => ({
+    ingredient_id: row.ingredient_id,
+    stock_quantity: row.stock_quantity,
+    ingredient_name: row.ingredients?.name || '-',
+    unit: row.ingredients?.unit || '-'
+  }));
+}
+
 onMounted(() => {
   fetchOutlets();
   fetchCategories();
   fetchProducts();
   fetchProductStocksAndPrices();
+  fetchIngredients();
 });
-
 watch(selectedOutlet, () => {
   fetchProductStocksAndPrices();
+  fetchProducts(); // fetchProducts akan otomatis refresh ingredientStocks dan productRecipes
 });
 </script>
 
