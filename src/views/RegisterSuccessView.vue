@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+  <div class="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
     <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
       <!-- Success Icon -->
       <div class="mb-6">
@@ -8,71 +8,41 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
           </svg>
         </div>
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">Registrasi Berhasil!</h1>
-        <p class="text-gray-600">Selamat datang di Finako</p>
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">Pendaftaran Berhasil!</h1>
+        <p class="text-gray-600">Satu langkah lagi untuk memulai.</p>
       </div>
 
-      <!-- User Info -->
+      <!-- Pesan Generik -->
       <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-        <p class="text-sm text-gray-600 mb-1">Akun berhasil dibuat untuk:</p>
-        <p class="font-semibold text-gray-900">{{ registrationData.email }}</p>
-        <p class="text-sm text-gray-600 mt-2">Organisasi: {{ registrationData.organizationName }}</p>
+        <p class="text-sm text-gray-700">
+          Kami telah mengirimkan email verifikasi ke alamat email Anda. Silakan klik link di dalam email tersebut untuk mengaktifkan akun Anda.
+        </p>
       </div>
 
-      <!-- Next Steps -->
+      <!-- Next Steps (Disederhanakan) -->
       <div class="mb-8">
         <h3 class="text-lg font-semibold text-gray-900 mb-3">Langkah Selanjutnya</h3>
-        <div class="space-y-2 text-left">
-          <div class="flex items-start">
-            <span class="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mr-3 mt-0.5">1</span>
-            <p class="text-sm text-gray-700">Login dengan akun yang baru saja dibuat</p>
-          </div>
-          <div class="flex items-start">
-            <span class="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mr-3 mt-0.5">2</span>
-            <p class="text-sm text-gray-700">Lengkapi informasi pembayaran</p>
-          </div>
-          <div class="flex items-start">
-            <span class="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mr-3 mt-0.5">3</span>
-            <p class="text-sm text-gray-700">Setup bisnis dan mulai menggunakan Finako</p>
-          </div>
-        </div>
+        <p class="text-sm text-gray-700">
+          Setelah verifikasi, Anda bisa langsung login untuk melanjutkan ke setup bisnis Anda.
+        </p>
       </div>
 
       <!-- Action Buttons -->
       <div class="space-y-3">
         <button 
           @click="goToLogin"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 transform hover:scale-105"
+          class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
         >
-          Login Sekarang
+          Lanjutkan ke Halaman Login
         </button>
-        <button 
-          @click="goToHomepage"
-          class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-lg transition duration-200"
-        >
-          Kembali ke Homepage
-        </button>
-      </div>
-
-      <!-- Tips Section -->
-      <div class="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-        <div class="flex items-start">
-          <svg class="w-5 h-5 text-amber-600 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-          </svg>
-          <div class="text-left">
-            <p class="text-sm font-medium text-amber-800 mb-1">💡 Tips Setup Cepat</p>
-            <p class="text-xs text-amber-700">Siapkan informasi bisnis Anda seperti nama toko, alamat, dan produk untuk setup yang lebih efisien nanti.</p>
-          </div>
-        </div>
       </div>
 
       <!-- Support Info -->
       <div class="mt-6 text-center">
         <p class="text-xs text-gray-500">
-          Butuh bantuan? 
-          <a href="mailto:support@finako.com" class="text-blue-600 hover:text-blue-800 font-medium">
-            Hubungi Support
+          Tidak menerima email? Cek folder Spam atau 
+          <a href="#" class="text-green-600 hover:text-green-800 font-medium">
+            kirim ulang email verifikasi.
           </a>
         </p>
       </div>
@@ -81,84 +51,30 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useUserStore } from '@/stores/userStore'
+import { useRouter } from 'vue-router';
 
-const router = useRouter()
-const route = useRoute()
-const userStore = useUserStore()
+// Tidak perlu lagi impor useRoute, onMounted, atau userStore.
+// Komponen ini menjadi sangat sederhana dan "bodoh".
 
-// Registration data from query params or store
-
-const registrationData = ref({
-  email: '',
-  organizationName: '',
-  userName: ''
-})
-
-onMounted(() => {
-  // Get registration data from query params (passed from RegisterView)
-  registrationData.value = {
-    email: route.query.email || 'User',
-    organizationName: route.query.organizationName || 'Organisasi Anda',
-    userName: route.query.userName || 'User'
-  }
-  // If no registration data, redirect to register
-  if (!route.query.email) {
-    router.push('/register')
-  }
-})
+const router = useRouter();
 
 const goToLogin = () => {
-  // Navigate to login with a hint that user just registered
-  router.push({
-    path: '/login',
-    query: { 
-      email: registrationData.value.email,
-      newUser: 'true'
-    }
-  })
-}
-
-const goToHomepage = () => {
-  router.push('/')
-}
+  // Cukup arahkan ke halaman login.
+  router.push({ name: 'Login' });
+};
 </script>
 
 <style scoped>
-/* Custom animations */
+/* Semua style kustom Anda tetap dipertahankan */
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-
-.max-w-md {
-  animation: fadeInUp 0.6s ease-out;
-}
-
-/* Hover effects */
-button:hover {
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-/* Success icon animation */
+.max-w-md { animation: fadeInUp 0.6s ease-out; }
+button:hover { box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); }
 @keyframes checkmark {
-  0% {
-    stroke-dasharray: 0 100;
-  }
-  100% {
-    stroke-dasharray: 100 0;
-  }
+  0% { stroke-dasharray: 0 100; }
+  100% { stroke-dasharray: 100 0; }
 }
-
-svg path {
-  animation: checkmark 0.6s ease-in-out 0.3s both;
-}
+svg path { animation: checkmark 0.6s ease-in-out 0.3s both; }
 </style>

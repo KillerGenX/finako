@@ -1,217 +1,109 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center px-4">
-    <div class="max-w-2xl w-full space-y-8">
+  <div class="min-h-screen bg-gradient-to-br from-green-50 to-teal-100 flex items-center justify-center p-4">
+    <div class="max-w-2xl w-full">
+      
       <!-- Header -->
-      <div class="text-center">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">
-          Setup Bisnis Anda
-        </h1>
-        <p class="text-gray-600">
-          Lengkapi informasi bisnis untuk mulai menggunakan Finako
-        </p>
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">Selamat Datang di Finako!</h1>
+        <p class="text-gray-600 mt-2">Tinggal beberapa langkah lagi untuk menyiapkan bisnis Anda.</p>
       </div>
 
-      <!-- Progress Bar -->
-      <div class="bg-white rounded-lg shadow-sm p-4">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-sm font-medium text-purple-600">Langkah {{ currentStep }} dari {{ totalSteps }}</span>
-          <span class="text-sm text-gray-500">{{ Math.round((currentStep / totalSteps) * 100) }}% selesai</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            class="bg-purple-600 h-2 rounded-full transition-all duration-300"
-            :style="{ width: `${(currentStep / totalSteps) * 100}%` }"
-          ></div>
-        </div>
-      </div>
-
-      <!-- Onboarding Form -->
-      <div class="bg-white rounded-lg shadow-xl p-8">
-        <form @submit.prevent="handleSubmit" class="space-y-6">
+      <!-- Card Utama -->
+      <div class="card w-full bg-base-100 shadow-xl">
+        <div class="card-body">
           
-          <!-- Step 1: Business Information -->
-          <div v-if="currentStep === 1" class="space-y-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Informasi Bisnis</h2>
-            
-            <div class="grid grid-cols-1 gap-6">
-              <div>
-                <label for="businessName" class="block text-sm font-medium text-gray-700 mb-2">
-                  Nama Bisnis *
-                </label>
-                <input
-                  id="businessName"
-                  v-model="form.business_name"
-                  type="text"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="PT. Nama Perusahaan"
-                  :disabled="isLoading"
-                />
-              </div>
+          <!-- Stepper dari DaisyUI -->
+          <ul class="steps mb-8">
+            <li class="step" :class="{'step-primary': currentStep >= 1}">Info Bisnis</li>
+            <li class="step" :class="{'step-primary': currentStep >= 2}">Outlet Utama</li>
+            <li class="step" :class="{'step-primary': currentStep >= 3}">Selesai</li>
+          </ul>
 
+          <form @submit.prevent="handleSubmit">
+            <!-- Step 1: Business Information -->
+            <div v-show="currentStep === 1" class="space-y-4 animate-fade-in">
               <div>
-                <label for="businessAddress" class="block text-sm font-medium text-gray-700 mb-2">
-                  Alamat Bisnis *
-                </label>
-                <textarea
-                  id="businessAddress"
-                  v-model="form.business_address"
-                  required
-                  rows="3"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="Alamat lengkap bisnis"
-                  :disabled="isLoading"
-                ></textarea>
+                <label for="businessName" class="label"><span class="label-text">Nama Bisnis *</span></label>
+                <input id="businessName" v-model="form.business_name" type="text" required class="input input-bordered w-full focus:input-primary" />
               </div>
-
               <div>
-                <label for="businessPhone" class="block text-sm font-medium text-gray-700 mb-2">
-                  Nomor Telepon *
-                </label>
-                <input
-                  id="businessPhone"
-                  v-model="form.business_phone"
-                  type="tel"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="08123456789"
-                  :disabled="isLoading"
-                />
+                <label for="businessAddress" class="label"><span class="label-text">Alamat Bisnis *</span></label>
+                <textarea id="businessAddress" v-model="form.business_address" required rows="3" class="textarea textarea-bordered w-full focus:textarea-primary"></textarea>
+              </div>
+              <div>
+                <label for="businessPhone" class="label"><span class="label-text">Nomor Telepon *</span></label>
+                <input id="businessPhone" v-model="form.business_phone" type="tel" required class="input input-bordered w-full focus:input-primary" />
               </div>
             </div>
-          </div>
 
-          <!-- Step 2: Outlet Information -->
-          <div v-if="currentStep === 2" class="space-y-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Outlet Utama</h2>
-            
-            <div class="grid grid-cols-1 gap-6">
+            <!-- Step 2: Outlet Information -->
+            <div v-show="currentStep === 2" class="space-y-4 animate-fade-in">
               <div>
-                <label for="outletName" class="block text-sm font-medium text-gray-700 mb-2">
-                  Nama Outlet *
-                </label>
-                <input
-                  id="outletName"
-                  v-model="form.outlet_name"
-                  type="text"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="Cabang Pusat"
-                  :disabled="isLoading"
-                />
+                <label for="outletName" class="label"><span class="label-text">Nama Outlet Utama *</span></label>
+                <input id="outletName" v-model="form.outlet_name" type="text" required class="input input-bordered w-full focus:input-primary" placeholder="Contoh: Cabang Pusat, Dapur Utama"/>
               </div>
-
               <div>
-                <label for="outletAddress" class="block text-sm font-medium text-gray-700 mb-2">
-                  Alamat Outlet *
-                </label>
-                <textarea
-                  id="outletAddress"
-                  v-model="form.outlet_address"
-                  required
-                  rows="3"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="Alamat outlet"
-                  :disabled="isLoading"
-                ></textarea>
+                <label for="outletAddress" class="label"><span class="label-text">Alamat Outlet *</span></label>
+                <textarea id="outletAddress" v-model="form.outlet_address" required rows="3" class="textarea textarea-bordered w-full focus:textarea-primary"></textarea>
               </div>
             </div>
-          </div>
 
-
-          <!-- Error Message -->
-          <div v-if="errorMessage" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
-            {{ errorMessage }}
-          </div>
-
-          <!-- Step 3: Ucapan Terima Kasih & Info Statis -->
-          <div v-if="currentStep === 3" class="space-y-6 text-center">
-            <h2 class="text-2xl font-bold text-purple-700 mb-2">Terima Kasih!</h2>
-            <p class="text-gray-700 mb-4">Data bisnis dan outlet utama Anda telah siap. Anda dapat mengatur detail keuangan, pajak, dan pengaturan lanjutan setelah masuk ke dashboard.</p>
-            <div class="bg-purple-50 border border-purple-200 rounded-md p-4 text-sm text-purple-800">
-              <p>Selamat datang di Finako! Silakan lanjutkan ke dashboard untuk mulai menggunakan seluruh fitur aplikasi.</p>
-              <p class="mt-2">Jika butuh bantuan, hubungi support di <a href="mailto:support@finako.id" class="text-purple-600 underline">support@finako.id</a></p>
+            <!-- Step 3: Selesai -->
+            <div v-show="currentStep === 3" class="text-center p-6 animate-fade-in">
+              <div class="text-5xl mb-4">🎉</div>
+              <h2 class="text-2xl font-bold text-gray-800">Semua Siap!</h2>
+              <p class="text-gray-600 mt-2">Bisnis Anda telah berhasil disiapkan. Klik tombol di bawah untuk masuk ke dashboard dan mulai mengelola bisnis Anda.</p>
             </div>
-          </div>
 
-          <!-- Navigation Buttons -->
-          <div class="flex justify-between pt-6">
-            <!-- Previous Button -->
-            <button
-              v-if="currentStep > 1"
-              type="button"
-              @click="currentStep--"
-              :disabled="isLoading"
-              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Sebelumnya
-            </button>
-            <div v-else></div>
+            <!-- Navigation Buttons -->
+            <div class="flex justify-between pt-8 mt-4 border-t">
+              <button type="button" @click="prevStep" :disabled="isLoading" class="btn btn-ghost" :class="{'invisible': currentStep === 1}">
+                Kembali
+              </button>
+              <button
+      v-if="currentStep < totalSteps"
+      type="button"  
+      @click="nextStep" 
+      :disabled="isLoading || !isCurrentStepValid"
+      class="btn btn-primary"
+    >
+      Lanjutkan
+    </button>
 
-            <!-- Next/Submit Button -->
-            <button
-              v-if="currentStep < 3"
-              type="submit"
-              :disabled="isLoading || !isCurrentStepValid"
-              class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg v-if="isLoading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {{ isLoading ? 'Menyimpan...' : (currentStep === totalSteps ? 'Selesai Setup' : 'Lanjutkan') }}
-            </button>
-            <button
-              v-else
-              type="submit"
-              :disabled="isLoading"
-              class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg v-if="isLoading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {{ isLoading ? 'Menyimpan...' : 'Lanjut ke Dashboard' }}
-            </button>
-          </div>
-        </form>
-
-        <!-- Logout Button -->
-        <div class="mt-6 pt-6 border-t border-gray-200">
-          <button
-            @click="handleLogout"
-            :disabled="isLoggingOut"
-            class="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg v-if="isLoggingOut" class="animate-spin -ml-1 mr-2 h-4 w-4 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <svg v-else class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            {{ isLoggingOut ? 'Keluar...' : 'Keluar dari Setup' }}
-          </button>
+    <!-- Tombol untuk STEP TERAKHIR (hanya ini yang men-submit form) -->
+    <button
+      v-else
+      type="submit" 
+      :disabled="isLoading || !isCurrentStepValid"
+      class="btn btn-primary"
+    >
+      <span v-if="isLoading" class="loading loading-spinner"></span>
+      Selesai & Masuk Dashboard
+    </button>
+            </div>
+          </form>
         </div>
+      </div>
+      
+      <!-- Tombol Logout -->
+      <div class="text-center mt-6">
+        <button @click="handleLogout" class="btn btn-link text-gray-500 text-sm">Keluar dari Setup</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/userStore'
-import { supabase } from '@/supabase'
-const router = useRouter()
-const userStore = useUserStore()
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useUserStoreRefactored } from '@/stores/userStoreRefactored';
 
-// Form state
-const currentStep = ref(1)
-const totalSteps = ref(3)
-const isLoading = ref(false)
-const isLoggingOut = ref(false)
-const errorMessage = ref('')
+const router = useRouter();
+const userStore = useUserStoreRefactored();
+
+const currentStep = ref(1);
+const totalSteps = 3;
+const isLoading = ref(false);
 
 const form = ref({
   business_name: '',
@@ -219,108 +111,81 @@ const form = ref({
   business_phone: '',
   outlet_name: '',
   outlet_address: '',
-  tax_enabled: true,
-  tax_percent: 11,
-  service_charge_enabled: false,
-  service_charge_percent: 0,
-  fixed_costs: 0,
-  avg_variable_cost: 0,
-  avg_selling_price: 0
-})
+});
 
-// Computed properties
-const isCurrentStepValid = computed(() => {
-  switch (currentStep.value) {
-    case 1:
-      return form.value.business_name && 
-             form.value.business_address && 
-             form.value.business_phone
-    case 2:
-      return form.value.outlet_name && 
-             form.value.outlet_address
-    case 3:
-      return true // Financial config is optional
-    default:
-      return false
-  }
-})
-
-// Handle form submission
-async function handleSubmit() {
-  if (isLoading.value) return
-
-  // If not last step, go to next step
-  if (currentStep.value < totalSteps.value) {
-    currentStep.value++
-    return
-  }
-
-  // Final submission
-  isLoading.value = true
-  errorMessage.value = ''
-
-  try {
-    // Mapping field ke skema Supabase
-    const businessUpdate = {
-      name: form.value.business_name,
-      address: form.value.business_address,
-      phone_number: form.value.business_phone,
-      onboarding_status: 'completed',
-    }
-
-    // Update bisnis & onboarding status via userStore action
-    const { success, next_step, error: onboardingError } = await userStore.completeOnboarding(businessUpdate)
-    if (!success) throw new Error(onboardingError || 'Gagal update data bisnis')
-
-    // Insert outlet utama jika belum ada (opsional: bisa dicek dulu)
-    const outletInsert = {
-      business_id: userStore.organization.id,
-      name: form.value.outlet_name,
-      address: form.value.outlet_address,
-    }
-    // Cek apakah outlet utama sudah ada (bisa diimprove, sekarang insert saja)
-    const { error: outletError } = await supabase
-      .from('outlets')
-      .insert([outletInsert])
-    if (outletError) throw outletError
-
-    // Sukses, redirect ke dashboard
-    router.push('/')
-  } catch (error) {
-    console.error('Onboarding error:', error)
-    errorMessage.value = error.message || 'Terjadi kesalahan. Silakan coba lagi.'
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Handle logout
-async function handleLogout() {
-  if (isLoggingOut.value) return
-  
-  isLoggingOut.value = true
-  
-  try {
-    await userStore.logout()
-    router.push('/login')
-  } catch (error) {
-    console.error('Logout failed:', error)
-  } finally {
-    isLoggingOut.value = false
-  }
-}
-
-// Initialize page
 onMounted(() => {
-  // Pre-fill organization name if available
-  if (userStore.organization?.name) {
-    form.value.business_name = userStore.organization.name
+  // Isi nama bisnis dari data yang sudah ada, jika ada
+  if (userStore.business?.name) {
+    form.value.business_name = userStore.business.name;
   }
+});
 
-  // Focus on first field
-  const firstInput = document.getElementById('businessName')
-  if (firstInput) {
-    firstInput.focus()
+const isCurrentStepValid = computed(() => {
+  if (currentStep.value === 1) {
+    return form.value.business_name && form.value.business_address && form.value.business_phone;
   }
-})
+  if (currentStep.value === 2) {
+    return form.value.outlet_name && form.value.outlet_address;
+  }
+  return true; // Step 3 selalu valid
+});
+
+function nextStep() {
+  if (currentStep.value < totalSteps) {
+    currentStep.value++;
+  }
+}
+
+function prevStep() {
+  if (currentStep.value > 1) {
+    currentStep.value--;
+  }
+}
+
+async function handleSubmit() {
+  if (!isCurrentStepValid.value || isLoading.value) return;
+
+  if (currentStep.value < totalSteps) {
+    nextStep();
+    return;
+  }
+  
+  // Final submission di step terakhir
+  isLoading.value = true;
+
+  const businessData = {
+    name: form.value.business_name,
+    address: form.value.business_address,
+    phone_number: form.value.business_phone,
+  };
+  const outletData = {
+    name: form.value.outlet_name,
+    address: form.value.outlet_address,
+  };
+
+  const { success } = await userStore.setupBusinessAndFirstOutlet(businessData, outletData);
+
+  if (success) {
+    // Router guard akan otomatis mengarahkan ke dashboard
+    // karena onboarding sudah selesai. Kita bisa push ke root.
+    router.push('/');
+  }
+  
+  isLoading.value = false;
+}
+
+async function handleLogout() {
+  await userStore.logout();
+}
 </script>
+
+<style scoped>
+/* Animasi sederhana untuk transisi antar step */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+</style>

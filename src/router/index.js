@@ -61,7 +61,8 @@ const routes = [
     meta: {
       requiresAuth: true,
       allowedStatus: ['pending'],
-      title: 'Informasi Pembayaran - Finako'
+      title: 'Informasi Pembayaran - Finako',
+      layout: 'SaasFlow'
     }
   },
   {
@@ -72,7 +73,8 @@ const routes = [
       requiresAuth: true,
       allowedStatus: ['active'],
       requiresOnboarding: false,
-      title: 'Setup Bisnis - Finako'
+      title: 'Setup Bisnis - Finako',
+      layout: 'SaasFlow'
     }
   },
 

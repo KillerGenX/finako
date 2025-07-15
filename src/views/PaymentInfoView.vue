@@ -27,16 +27,16 @@
           </svg>
         </div>
         <!-- Organization Info -->
-        <div v-if="organizationInfo && userProfile" class="mb-6">
+        <div v-if="businessInfo && userProfile" class="mb-6">
           <h2 class="text-lg font-semibold text-gray-900 mb-4">Informasi Organisasi</h2>
           <div class="space-y-3">
             <div class="flex justify-between">
               <span class="text-sm text-gray-600">Nama Bisnis:</span>
-              <span class="text-sm font-medium text-gray-900">{{ organizationInfo.name }}</span>
+              <span class="text-sm font-medium text-gray-900">{{ businessInfo.name }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-sm text-gray-600">Email:</span>
-              <span class="text-sm font-medium text-gray-900">{{ userProfile?.email }}</span>
+              <span class="text-sm font-medium text-gray-900">{{ userStore.userEmail }}</span>
             </div>
           </div>
         </div>
@@ -157,196 +157,130 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/userStore'
-import { supabase } from '@/supabase'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
+// Pastikan kedua store diimpor
+import { useUserStoreRefactored, useUIStore } from '@/stores/userStoreRefactored';
+import { supabase } from '@/supabase';
 
-const router = useRouter()
-const userStore = useUserStore()
+const router = useRouter();
+const userStore = useUserStoreRefactored();
+const uiStore = useUIStore(); // Inisialisasi uiStore untuk notifikasi
 
-// State
-const isChecking = ref(false)
-const isLoggingOut = ref(false)
-const autoRefreshInterval = ref(30000) // 30 seconds
-const nextRefreshCountdown = ref(30)
-const autoRefreshTimer = ref(null)
-const countdownTimer = ref(null)
-const isInitialized = ref(false)
+// State lokal
+const isChecking = ref(false);
+const isLoggingOut = ref(false);
+const autoRefreshInterval = ref(30000);
+const nextRefreshCountdown = ref(30);
+const autoRefreshTimer = ref(null);
+const countdownTimer = ref(null);
+const packages = ref([]);
+const selectedPackageId = ref('');
+const isSubmitting = ref(false);
 
-// Computed
-const organizationInfo = computed(() => userStore.organization)
-const userProfile = computed(() => userStore.profile)
-const subscription = computed(() => organizationInfo.value?.subscription || null)
+// Computed properties
+const businessInfo = computed(() => userStore.business);
+const userProfile = computed(() => userStore.profile);
+const subscription = computed(() => userStore.currentSubscription);
 
-// Paket/plan
-const packages = ref([])
-const selectedPackageId = ref('')
-const isSubmitting = ref(false)
 
-// Status helpers
-function getStatusClass(status) {
-  switch (status) {
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800'
-    case 'active':
-      return 'bg-green-100 text-green-800'
-    case 'rejected':
-      return 'bg-red-100 text-red-800'
-    case 'suspended':
-      return 'bg-gray-100 text-gray-800'
-    default:
-      return 'bg-gray-100 text-gray-800'
+// ===============================================
+// === FUNGSI-FUNGSI PENTING ADA DI SINI ===
+// ===============================================
+
+// FUNGSI INI HARUS ADA SEBELUM DIPANGGIL OLEH checkStatus
+function cleanup() {
+  if (autoRefreshTimer.value) {
+    clearInterval(autoRefreshTimer.value);
+    autoRefreshTimer.value = null;
+  }
+  if (countdownTimer.value) {
+    clearInterval(countdownTimer.value);
+    countdownTimer.value = null;
   }
 }
 
-function getStatusText(status) {
-  switch (status) {
-    case 'pending':
-      return 'Menunggu Persetujuan'
-    case 'active':
-      return 'Aktif'
-    case 'rejected':
-      return 'Ditolak'
-    case 'suspended':
-      return 'Disuspend'
-    default:
-      return 'Tidak Diketahui'
-  }
-}
-
-
-// Check subscription status and redirect if needed
 async function checkStatus() {
-  if (isChecking.value) return
-  isChecking.value = true
+  if (isChecking.value) return;
+  isChecking.value = true;
   try {
-    await userStore.fetchUserProfile()
-    // Refresh organization & subscription
-    if (subscription.value && subscription.value.status === 'active') {
-      // Hentikan auto-refresh sebelum redirect
-      cleanup()
-      // Langganan sudah aktif, redirect ke onboarding/dashboard
-      if (organizationInfo.value?.onboarding_status !== 'completed') {
-        router.replace('/onboarding')
-      } else {
-        router.replace('/')
-      }
-      return
+    await userStore.fetchUserSession();
+
+    const updatedSubscription = userStore.currentSubscription;
+    const onboardingDone = userStore.isOnboardingCompleted;
+    
+    if (updatedSubscription && updatedSubscription.status === 'active') {
+        // Panggil fungsi cleanup yang sudah kita definisikan di atas
+        cleanup(); 
+
+        if (!onboardingDone) {
+            router.replace({ name: 'Onboarding' });
+        } else {
+            router.replace({ name: 'Dashboard' });
+        }
     }
-    // Jika status pending, tetap di halaman ini (instruksi pembayaran)
-    // Jika belum ada subscription, tetap di halaman ini (form pilih paket)
   } catch (error) {
-    console.error('Status check failed:', error)
-    userStore.showNotification('Gagal memeriksa status. Silakan coba lagi.', 'error')
+    console.error('Status check failed:', error);
+    uiStore.showNotification('Gagal memeriksa status.', 'error');
   } finally {
-    isChecking.value = false
+    isChecking.value = false;
   }
 }
 
-// Ambil daftar paket/plan
 async function loadPackages() {
-  try {
-    packages.value = await userStore.getPackages() || []
-  } catch (e) {
-    packages.value = []
-  }
+  packages.value = await userStore.getPackages();
 }
 
-// Submit pilih paket
 async function handleChoosePackage() {
-  if (!selectedPackageId.value) return
-  isSubmitting.value = true
-  try {
-    // Insert subscription baru (status pending)
-    const { error } = await supabase
-  .from('subscriptions')
-  .insert({ 
-        business_id: organizationInfo.value.id,
-        plan_id: selectedPackageId.value,
-        status: 'pending',
-        start_date: new Date().toISOString(),
-        end_date: new Date().toISOString(),
-      })
-    if (error) throw error
-    userStore.showNotification('Paket berhasil dipilih. Silakan lakukan pembayaran.', 'success')
-    await userStore.fetchUserProfile()
-    await checkStatus()
-  } catch (e) {
-    userStore.showNotification(e.message || 'Gagal memilih paket', 'error')
-  } finally {
-    isSubmitting.value = false
+  if (!selectedPackageId.value || !businessInfo.value) return;
+  isSubmitting.value = true;
+  
+  const { error } = await supabase.from('subscriptions').insert({ 
+    business_id: businessInfo.value.id,
+    plan_id: selectedPackageId.value,
+    status: 'pending',
+    start_date: new Date().toISOString(),
+    end_date: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(),
+  });
+
+  if (error) {
+    uiStore.showNotification(error.message, 'error'); 
+  } else {
+    uiStore.showNotification('Paket berhasil dipilih. Silakan lakukan pembayaran.', 'success');
+    await checkStatus();
   }
+  isSubmitting.value = false;
 }
 
-// Handle logout
 async function handleLogout() {
-  if (isLoggingOut.value) return
-  
-  isLoggingOut.value = true
-  
-  try {
-    await userStore.logout()
-    router.push('/login')
-  } catch (error) {
-    console.error('Logout failed:', error)
-  } finally {
-    isLoggingOut.value = false
-  }
+  isLoggingOut.value = true;
+  await userStore.logout();
 }
 
 // Setup auto refresh
 function setupAutoRefresh() {
-  // Countdown timer (updates every second)
+  cleanup(); // Hentikan timer lama sebelum memulai yang baru
+
   countdownTimer.value = setInterval(() => {
-    nextRefreshCountdown.value--
-    if (nextRefreshCountdown.value <= 0) {
-      nextRefreshCountdown.value = autoRefreshInterval.value / 1000
-    }
-  }, 1000)
+    nextRefreshCountdown.value = nextRefreshCountdown.value > 0 ? nextRefreshCountdown.value - 1 : autoRefreshInterval.value / 1000;
+  }, 1000);
 
-  // Auto refresh timer
   autoRefreshTimer.value = setInterval(() => {
-    // Jangan auto-refresh jika sudah redirect (misal: subscription active)
-    if (subscription.value && subscription.value.status === 'active') {
-      cleanup()
-      return
-    }
-    checkStatus()
-    nextRefreshCountdown.value = autoRefreshInterval.value / 1000
-  }, autoRefreshInterval.value)
+    checkStatus();
+  }, autoRefreshInterval.value);
 }
 
-// Cleanup timers
-function cleanup() {
-  if (autoRefreshTimer.value) {
-    clearInterval(autoRefreshTimer.value)
-    autoRefreshTimer.value = null
+// Lifecycle Hooks
+onMounted(() => {
+  loadPackages();
+  // Tidak perlu checkStatus() di sini, biarkan guard yang menangani saat pertama kali masuk
+  // Tapi kita tetap setup auto-refresh jika perlu
+  if (!subscription.value || subscription.value.status !== 'active') {
+    setupAutoRefresh();
   }
-  if (countdownTimer.value) {
-    clearInterval(countdownTimer.value)
-    countdownTimer.value = null
-  }
-}
+});
 
-
-
-// Only run checkStatus and auto-refresh once after first data ready
-onMounted(async () => {
-  await loadPackages()
-  await checkStatus()
-  isInitialized.value = true
-})
-
-// Setup auto-refresh only once after first checkStatus
-watch(isInitialized, (val) => {
-  if (val && (!subscription.value || subscription.value.status !== 'active')) {
-    setupAutoRefresh()
-  }
-})
-
-// Cleanup on unmount
 onUnmounted(() => {
-  cleanup()
-})
+  cleanup(); // Pastikan timer dibersihkan saat komponen dihancurkan
+});
 </script>

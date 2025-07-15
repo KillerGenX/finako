@@ -37,7 +37,7 @@
           </label>
           <input
             id="full_name"
-            v-model="form.full_name"
+            v-model="form.fullName"
             type="text"
             required
             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
@@ -94,12 +94,8 @@
             </div>
           </div>
 
-          <!-- ...existing code... -->
-
-          <!-- Error Message -->
-          <div v-if="errorMessage" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
-            {{ errorMessage }}
-          </div>
+          
+          
 
           <!-- Terms and Conditions -->
           <div class="flex items-start">
@@ -156,82 +152,66 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/userStore'
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+// 1. Ganti impor ke store yang benar
+import { useUserStoreRefactored } from '@/stores/userStoreRefactored';
 
-const router = useRouter()
-const userStore = useUserStore()
+const router = useRouter();
+// 2. Inisialisasi store yang benar
+const userStore = useUserStoreRefactored();
 
-// Form state
-
+// 3. Ubah nama field agar lebih konsisten dengan penanganan form
 const form = ref({
   businessName: '',
-  full_name: '',
+  fullName: '', // Diubah dari full_name
   email: '',
   password: '',
   agreeTerms: false
-})
+});
 
-const isLoading = ref(false)
-const showPassword = ref(false)
-const errorMessage = ref('')
+const isLoading = ref(false);
+const showPassword = ref(false);
+// 4. Hapus errorMessage lokal, kita akan pakai notifikasi global
+// const errorMessage = ref('');
 
 const isFormValid = computed(() => {
   return form.value.businessName &&
-         form.value.full_name &&
+         form.value.fullName && // Gunakan fullName
          form.value.email &&
          form.value.password &&
          form.value.agreeTerms &&
-         form.value.password.length >= 6
-})
+         form.value.password.length >= 6;
+});
 
-
-// Handle registration
+// 5. Refactor fungsi handleRegister menjadi lebih bersih
 async function handleRegister() {
-  if (isLoading.value || !isFormValid.value) return
-  isLoading.value = true
-  errorMessage.value = ''
-  try {
-    if (form.value.password.length < 6) {
-      throw new Error('Password minimal 6 karakter')
-    }
-    // Prepare registration data
-    const registrationData = {
-      email: form.value.email.trim(),
-      password: form.value.password,
-      businessName: form.value.businessName.trim(),
-      full_name: form.value.full_name.trim()
-    }
-    // Attempt registration
-    const result = await userStore.registerTenant(registrationData)
-    if (result.success) {
-      // Registration successful, redirect to success page with registration info
-      router.push({
-        path: '/register/success',
-        query: {
-          email: form.value.email,
-          organizationName: form.value.businessName,
-          userName: form.value.full_name
-        }
-      })
-    } else {
-      errorMessage.value = result.error || 'Registrasi gagal. Silakan coba lagi.'
-    }
-  } catch (error) {
-    console.error('Registration error:', error)
-    errorMessage.value = error.message || 'Terjadi kesalahan. Silakan coba lagi.'
-  } finally {
-    isLoading.value = false
+  if (isLoading.value || !isFormValid.value) return;
+  
+  isLoading.value = true;
+  
+  // Panggil action `register` yang baru dari store yang sudah digabung
+  const result = await userStore.register(
+    form.value.email.trim(),
+    form.value.password,
+    form.value.fullName.trim(),
+    form.value.businessName.trim()
+  );
+
+  if (result.success) {
+    // Jika sukses, arahkan ke halaman berikutnya
+    router.push({ name: 'RegisterSuccess' });
   }
+  
+  // Penanganan error sudah otomatis ditangani oleh notifikasi di dalam store
+  isLoading.value = false;
 }
 
-// Initialize page
+// Fungsi onMounted tetap sama
 onMounted(() => {
-  // Focus on business name field
-  const businessNameInput = document.getElementById('businessName')
+  const businessNameInput = document.getElementById('businessName');
   if (businessNameInput) {
-    businessNameInput.focus()
+    businessNameInput.focus();
   }
-})
+});
 </script>
