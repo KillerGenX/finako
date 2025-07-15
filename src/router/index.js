@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '@/stores/userStore'
+import { watch } from 'vue' // <-- TAMBAHKAN INI
+import { useUserStoreRefactored } from '@/stores/userStoreRefactored'
 
 // Import Views
 import LoginView from '@/views/LoginView.vue'
@@ -220,112 +221,64 @@ const router = createRouter({
 
 // Navigation Guards untuk SaaS Flow Control
 router.beforeEach(async (to, from, next) => {
-  const userStore = useUserStore()
-  
-  // Set page title
-  if (to.meta.title) {
-    document.title = to.meta.title
+  // Gunakan store BARU
+  const userStore = useUserStoreRefactored()
+
+  document.title = to.meta.title || 'Finako POS'
+
+  // Tunggu sampai store baru selesai memuat data sesi awal
+  // Ini menggantikan `waitForReady` loop Anda dengan cara yang lebih bersih
+  if (!userStore.isReady) {
+    await new Promise(resolve => {
+      const unwatch = watch(() => userStore.isReady, (ready) => {
+        if (ready) {
+          unwatch()
+          resolve()
+        }
+      })
+    })
   }
 
-  // Check if route requires authentication
-  if (to.meta.requiresAuth) {
-    // TUNDA GUARD SAMPAI STATE USERSTORE SIAP
-    const waitForReady = async () => {
-      let waited = 0;
-      while (!userStore.isReady && waited < 3000) { // max 3 detik
-        await new Promise(res => setTimeout(res, 50));
-        waited += 50;
-      }
-    };
-    await waitForReady();
+  const isLoggedIn = userStore.isLoggedIn
+  const isOnboardingDone = userStore.isOnboardingCompleted
+  const subscriptionStatus = userStore.currentSubscription?.status
 
-    // Check if user is authenticated
-    if (!userStore.isLoggedIn) {
-      console.log('User not authenticated, redirecting to login')
-      return next({ name: 'Login', query: { redirect: to.fullPath } })
+  // === Logika Routing ===
+
+  // Jika route butuh login, TAPI user belum login
+  if (to.meta.requiresAuth && !isLoggedIn) {
+    return next({ name: 'Login', query: { redirect: to.fullPath } })
+  }
+
+  // Jika user sudah login TAPI mencoba akses halaman login/register
+  if (isLoggedIn && ['Login', 'Register'].includes(to.name)) {
+    return next({ name: 'Dashboard' })
+  }
+
+  // --- Alur SaaS Flow untuk user yang SUDAH Login ---
+  if (isLoggedIn && to.meta.requiresAuth) {
+    // 1. Cek Langganan
+    if (subscriptionStatus !== 'active') {
+      // Jika mencoba akses halaman selain payment-info, paksa ke payment-info
+      if (to.name !== 'PaymentInfo') return next({ name: 'PaymentInfo' })
     }
 
-    // If authenticated, check user session and organization status
-    try {
-      console.log('Checking session for authenticated user...')
-      const sessionData = await userStore.checkSessionAndRedirect()
-      console.log('Session data received:', sessionData)
-      
-      const organization = userStore.organization
-      console.log('Organization data:', organization)
-      
-      const nextStep = sessionData.next_step
-      console.log('Next step:', nextStep)
-      
-      // If no organization data, something went wrong
-      if (!organization) {
-        console.log('No organization found, redirecting to login')
-        await userStore.logout()
-        return next({ name: 'Login' })
-      }
+    // 2. Cek Onboarding
+    else if (!isOnboardingDone) {
+      // Jika langganan aktif TAPI onboarding belum selesai
+      if (to.name !== 'Onboarding') return next({ name: 'Onboarding' })
+    }
 
-      // Check organization subscription status restrictions
-      if (to.meta.allowedStatus && organization.subscription && !to.meta.allowedStatus.includes(organization.subscription.status)) {
-        console.log(`Organization subscription status ${organization.subscription.status} not allowed for route ${to.name}`)
-        const redirectRoute = getRedirectRoute(nextStep)
-        if (to.name !== redirectRoute) {
-          return next({ name: redirectRoute })
-        } else {
-          return next()
-        }
+    // 3. Jika langganan aktif DAN onboarding selesai
+    else {
+      // Jika mencoba akses halaman onboarding/payment, lempar ke dashboard
+      if (['Onboarding', 'PaymentInfo'].includes(to.name)) {
+        return next({ name: 'Dashboard' })
       }
-
-      // Check if onboarding is required but not completed
-      if (to.meta.requiresOnboarding && !userStore.isOnboardingCompleted()) {
-        console.log('Onboarding required but not completed')
-        if (to.name !== 'Onboarding') {
-          return next({ name: 'Onboarding' })
-        } else {
-          return next()
-        }
-      }
-
-      // If trying to access onboarding but already completed
-      if (to.name === 'Onboarding' && userStore.isOnboardingCompleted()) {
-        console.log('Onboarding already completed, redirecting to dashboard')
-        if (to.name !== 'Dashboard') {
-          return next({ name: 'Dashboard' })
-        } else {
-          return next()
-        }
-      }
-
-      // If trying to access payment-info but subscription status is not pending
-      if (to.name === 'PaymentInfo' && organization.subscription && organization.subscription.status !== 'pending') {
-        console.log('Payment info not needed, subscription status:', organization.subscription.status)
-        const redirectRoute = getRedirectRoute(nextStep)
-        if (to.name !== redirectRoute) {
-          return next({ name: redirectRoute })
-        } else {
-          return next()
-        }
-      }
-
-    } catch (error) {
-      console.error('Session check failed:', error)
-      await userStore.logout()
-      return next({ name: 'Login' })
     }
   }
 
-  // If user is authenticated and trying to access login/register, redirect appropriately
-  if ((to.name === 'Login' || to.name === 'Register') && userStore.isLoggedIn) {
-    try {
-      const sessionData = await userStore.checkSessionAndRedirect()
-      const nextStep = sessionData.next_step
-      console.log('User already authenticated, redirecting to:', nextStep)
-      return next({ name: getRedirectRoute(nextStep) })
-    } catch (error) {
-      console.error('Error checking session:', error)
-      // Continue to login/register if there's an error
-    }
-  }
-
+  // Jika semua kondisi di atas lolos, izinkan akses
   next()
 })
 

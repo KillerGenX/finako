@@ -1,42 +1,44 @@
 <script setup>
-import { RouterLink, useRouter } from 'vue-router';
-import { useUserStore } from '@/stores/userStore';
-import { supabase } from '@/supabase';
+import { RouterLink } from 'vue-router';
+import { storeToRefs } from 'pinia';
+// Store yang kita butuhkan untuk UI (toggle) dan data user (logout)
+import { useUserStoreRefactored, useUIStore } from '@/stores/userStoreRefactored'; 
 import { useSidebarMenu } from '@/composables/useSidebarMenu';
-import { computed } from 'vue';
 
 // Impor semua ikon yang kita butuhkan
-import {
-  HomeIcon, Cog6ToothIcon, ShoppingCartIcon, BuildingStorefrontIcon,
-  ArchiveBoxIcon, CubeIcon, ChartPieIcon, UsersIcon, ClockIcon,
-  ArrowLeftOnRectangleIcon, UserGroupIcon, TagIcon
-} from '@heroicons/vue/24/outline';
+import { ArrowLeftOnRectangleIcon } from '@heroicons/vue/24/outline';
 import { ChevronDoubleLeftIcon } from '@heroicons/vue/24/solid';
 
+
 const emit = defineEmits(['show-tooltip', 'hide-tooltip']);
-const userStore = useUserStore();
-const router = useRouter();
 
-const plan = computed(() => userStore.organization?.subscription?.plan_name?.toLowerCase() || 'basic');
-const role = computed(() => (userStore.userRole || 'staff').toLowerCase());
-const sidebarMenu = computed(() => useSidebarMenu(plan.value, role.value));
+// 1. Inisialisasi store yang BENAR
+const userStore = useUserStoreRefactored();
+const uiStore = useUIStore(); // Gunakan UI store untuk sidebar collapse
 
-// Fungsi untuk tooltip & logout (tidak berubah)
+// 2. Ambil state `isSidebarCollapsed` yang REAKTIF dari uiStore
+const { isSidebarCollapsed } = storeToRefs(uiStore);
+
+// 3. Panggil composable baru kita. Ia akan memberikan menu yang sudah reaktif.
+const { filteredMenu } = useSidebarMenu();
+
+// 4. Fungsi handleLogout sekarang cukup memanggil fungsi dari store.
+// Store akan menangani pembersihan data dan redirect.
+function handleLogout() {
+  if (confirm("Apakah Anda yakin ingin keluar?")) {
+    userStore.logout();
+  }
+}
+
+// Fungsi tooltip tidak berubah
 function showTooltip(event, text) {
-  if (userStore.isSidebarCollapsed) {
+  if (isSidebarCollapsed.value) { // Gunakan state reaktif
     emit('show-tooltip', { event, text });
   }
 }
 function hideTooltip() {
-  if (userStore.isSidebarCollapsed) {
+  if (isSidebarCollapsed.value) { // Gunakan state reaktif
     emit('hide-tooltip');
-  }
-}
-async function handleLogout() {
-  if (confirm("Apakah Anda yakin ingin keluar?")) {
-    await supabase.auth.signOut();
-    userStore.clearUserProfile();
-    router.push("/login");
   }
 }
 </script>
@@ -44,7 +46,7 @@ async function handleLogout() {
 <template>
   <aside 
     class="bg-base-100 text-base-content flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out shadow-lg"
-    :class="userStore.isSidebarCollapsed ? 'w-20' : 'w-64'"
+    :class="isSidebarCollapsed ? 'w-20' : 'w-64'"
   >
     <div class="h-16 flex items-center justify-center p-4">
       <RouterLink to="/" class="min-w-max flex items-center gap-2">
@@ -53,11 +55,12 @@ async function handleLogout() {
     </div>
 
     <div class="flex-grow overflow-y-auto overflow-x-hidden">
+      <!-- 5. Loop langsung ke `filteredMenu` -->
       <ul class="menu p-2 space-y-1">
-        <li v-for="menu in sidebarMenu" :key="menu.route">
+        <li v-for="menu in filteredMenu" :key="menu.route">
           <RouterLink :to="menu.route" @mouseenter="showTooltip($event, menu.name)" @mouseleave="hideTooltip" class="items-center">
             <component :is="menu.icon" class="h-6 w-6 shrink-0" />
-            <span v-if="!userStore.isSidebarCollapsed">{{ menu.name }}</span>
+            <span v-if="!isSidebarCollapsed">{{ menu.name }}</span>
           </RouterLink>
         </li>
       </ul>
@@ -67,16 +70,17 @@ async function handleLogout() {
       <li>
         <a @click="handleLogout" @mouseenter="showTooltip($event, 'Logout')" @mouseleave="hideTooltip" class="items-center">
           <ArrowLeftOnRectangleIcon class="h-6 w-6 shrink-0" />
-          <span v-if="!userStore.isSidebarCollapsed">Logout</span>
+          <span v-if="!isSidebarCollapsed">Logout</span>
         </a>
       </li>
       <li>
-        <a @click="userStore.toggleSidebar" class="items-center" @mouseenter="showTooltip($event, userStore.isSidebarCollapsed ? 'Perbesar' : 'Kecilkan')" @mouseleave="hideTooltip">
+        <!-- 6. Panggil fungsi toggle dari `uiStore` -->
+        <a @click="uiStore.toggleSidebar" class="items-center" @mouseenter="showTooltip($event, isSidebarCollapsed ? 'Perbesar' : 'Kecilkan')" @mouseleave="hideTooltip">
           <ChevronDoubleLeftIcon 
             class="h-6 w-6 shrink-0 transition-transform duration-300"
-            :class="{ 'rotate-180': userStore.isSidebarCollapsed }"
+            :class="{ 'rotate-180': isSidebarCollapsed }"
           />
-          <span v-if="!userStore.isSidebarCollapsed">Kecilkan</span>
+          <span v-if="!isSidebarCollapsed">Kecilkan</span>
         </a>
       </li>
     </ul>
@@ -90,6 +94,4 @@ async function handleLogout() {
   color: hsl(var(--pc));
   font-weight: 600;
 }
-.w-64 .tooltip::before, .w-64 .tooltip::after { display: none !important; }
-.w-20 .tooltip::before, .w-20 .tooltip::after { display: revert !important; }
 </style>

@@ -116,62 +116,53 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useUserStore } from '@/stores/userStore'
+// Impor BENAR ke store yang baru
+import { useUserStoreRefactored } from '@/stores/userStoreRefactored'
 
 const router = useRouter()
 const route = useRoute()
-const userStore = useUserStore()
+const userStore = useUserStoreRefactored()
 
-// Form state
-const form = ref({
-  email: '',
-  password: ''
-})
-
+// State lokal tidak berubah
+const form = ref({ email: '', password: '' })
 const isLoading = ref(false)
 const showPassword = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
-// Handle login
+// Versi FINAL dari handleLogin
 async function handleLogin() {
   if (isLoading.value) return
-  
   isLoading.value = true
   errorMessage.value = ''
 
   try {
-    // Validate form
-    if (!form.value.email || !form.value.password) {
-      throw new Error('Email dan password harus diisi')
-    }
-
-    // Attempt login
+    // Panggil fungsi login dari store BARU kita.
     const result = await userStore.loginWithEmailPassword(
       form.value.email.trim(),
       form.value.password
     )
 
+    // ============================================
+    // === INI BAGIAN KUNCI PERBAIKANNYA ===
+    // ============================================
     if (result.success) {
-      // Check session and determine redirect
-      const sessionData = await userStore.checkSessionAndRedirect()
+      // Jika store mengembalikan sukses, kita lakukan redirect manual
+      // berdasarkan `nextStep` yang diberikan oleh store.
       
-      // Smart redirect based on organization status
-      switch (sessionData.next_step) {
-        case 'payment_info':
-          router.push('/payment-info')
-          break
-        case 'onboarding':
-          router.push('/onboarding')
-          break
-        case 'dashboard':
-        default:
-          router.push('/')
-          break
-      }
+      const destination = {
+        'dashboard': '/',
+        'onboarding': '/onboarding',
+        'payment_info': '/payment-info'
+      }[result.nextStep] || '/'; // Default ke dashboard
+      
+      router.push(destination);
+
     } else {
       errorMessage.value = result.error || 'Login gagal. Silakan coba lagi.'
     }
+    // ============================================
+
   } catch (error) {
     console.error('Login error:', error)
     errorMessage.value = error.message || 'Terjadi kesalahan. Silakan coba lagi.'
@@ -180,19 +171,16 @@ async function handleLogin() {
   }
 }
 
-// Initialize page
+// onMounted tidak berubah
 onMounted(() => {
-  // Clear any previous errors
   errorMessage.value = ''
   successMessage.value = ''
   
-  // Check if coming from registration success
   if (route.query.newUser === 'true' && route.query.email) {
     form.value.email = route.query.email
     successMessage.value = 'Registrasi berhasil! Silakan login dengan akun baru Anda.'
   }
   
-  // Focus on appropriate field
   const targetInput = form.value.email ? 
     document.getElementById('password') : 
     document.getElementById('email')
