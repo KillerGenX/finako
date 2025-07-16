@@ -2,6 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const puppeteer = require('puppeteer');
 const { createClient } = require('@supabase/supabase-js');
+const cors = require('cors');
 
 // === Konfigurasi & Inisialisasi ===
 dotenv.config();
@@ -11,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 
 // Inisialisasi Supabase Client dengan Service Role Key
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 // === Helper & Template ===

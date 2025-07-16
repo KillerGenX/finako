@@ -121,9 +121,14 @@ async function handleSendWhatsApp() {
   isGeneratingPdf.value = true;
   pdfError.value = null;
   
+  // URL lengkap ke backend Anda yang berjalan di VM Compute Engine
+  const apiUrl = `https://spicy-bugs-follow.loca.lt/generate-receipt`;
+
   try {
-    // Panggil backend kustom kita melalui Vite Proxy
-    const response = await fetch('/api/generate-receipt', {
+    console.log(`[Frontend] Mencoba memanggil API di: ${apiUrl}`);
+
+    // Panggil backend di VM secara langsung
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -134,11 +139,17 @@ async function handleSendWhatsApp() {
     const result = await response.json();
 
     if (!response.ok) {
-      throw new Error(result.error || 'Gagal membuat PDF.');
+      // Jika error, coba tampilkan detail dari server
+      throw new Error(result.details || result.error || 'Gagal membuat PDF.');
     }
 
     const pdfUrl = result.url;
     
+    // Tambahkan pengecekan jika URL ternyata kosong
+    if (!pdfUrl) {
+      throw new Error('Server merespons sukses, tetapi tidak ada URL PDF yang diterima.');
+    }
+
     // Siapkan pesan untuk WhatsApp
     const message = `Halo, berikut adalah struk untuk transaksi Anda di ${userStore.business?.name}:\n\n${pdfUrl}\n\nTerima kasih!`;
     
