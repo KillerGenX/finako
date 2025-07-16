@@ -84,6 +84,37 @@ const ingredientStocks = ref([]) // Untuk menyimpan HANYA info stok per outlet
     });
 });
 
+const productsForSale = computed(() => {
+    const activeOutlet = userStore.activeOutletId;
+    if (!activeOutlet) {
+     // console.warn("productsForSale: activeOutletId belum di-set!"); //
+      return [];
+    }
+  
+    // LOGIKA SEMENTARA UNTUK DEBUGGING
+    // Tampilkan semua produk, kita hanya butuh nama dan harganya untuk sekarang.
+    return products.value.map(p => {
+      let price = 0;
+      
+      if (p.has_variants) {
+        // Cari harga varian pertama sebagai contoh
+        const firstVariant = p.product_variants?.[0];
+        const outletInfo = firstVariant?.product_variant_outlets?.find(pvo => pvo.outlet_id === activeOutlet);
+        price = outletInfo?.price ?? 0;
+      } else {
+        const outletInfo = p.product_outlets.find(po => po.outlet_id === activeOutlet);
+        price = outletInfo?.price ?? 0;
+      }
+      
+     // console.log(`Produk: ${p.name}, Harga: ${price}`); // Tambahkan console.log untuk cek
+  
+      return {
+        ...p,
+        price: price || 0, // Pastikan ada nilai default
+      };
+    });
+  });
+
 const filteredProducts = computed(() => {
     let result = productsWithDetails.value;
 
@@ -543,7 +574,8 @@ async function saveVariantStocks(variantsPayload) {
     saveVariantStocks,
 
     // Getters
-    filteredProducts, // Kita tetap pakai nama ini
+    filteredProducts, 
+    productsForSale,  // Kita tetap pakai nama ini
 
     // Actions
     fetchInitialData,
