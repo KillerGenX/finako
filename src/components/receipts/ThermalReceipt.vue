@@ -9,6 +9,7 @@
       <hr class="border-dashed border-black my-2">
       
       <table class="w-full text-xs">
+      <tbody>
         <tr>
           <td>ID:</td>
           <td class="text-right">{{ transaction?.id?.slice(-8).toUpperCase() }}</td>
@@ -21,6 +22,7 @@
           <td>Kasir:</td>
           <td class="text-right">{{ cashierName }}</td>
         </tr>
+      </tbody>
       </table>
       
       <hr class="border-dashed border-black my-2">
@@ -32,10 +34,12 @@
           <p class="font-semibold">{{ item.product_name }}</p>
           <p v-if="item.variant_name" class="pl-2">- {{ item.variant_name }}</p>
           <table class="w-full">
+            <tbody>
               <tr>
                   <td class="text-left">{{ item.quantity }} x {{ formatCurrency(item.price_per_item, false) }}</td>
                   <td class="text-right">{{ formatCurrency(item.total_price, false) }}</td>
               </tr>
+            </tbody>
           </table>
       </div>
       <!-- =============================================== -->
