@@ -173,7 +173,9 @@ const filteredIngredients = computed(() => { /* ... kode tidak berubah ... */
     if (!currentOutletId) return [];
     const resultsWithStock = ingredients.value.map(ing => {
         const stockInfo = ingredientStocks.value.find(s => s.ingredient_id === ing.id && s.outlet_id === currentOutletId);
-        return { ...ing, stock_quantity: stockInfo?.stock_quantity ?? 0, min_stock: stockInfo?.min_stock ?? 0, is_active: stockInfo?.is_active ?? true, stock_id: stockInfo?.id, };
+        return { ...ing, stock_quantity: stockInfo?.stock_quantity ?? 0, min_stock: stockInfo?.min_stock ?? 0, is_active: stockInfo?.is_active ?? true, stock_id: stockInfo?.id,cost_price: stockInfo?.cost_price ?? 0,
+          // Juga sertakan outlet_id agar modal tahu konteksnya
+          outlet_id: currentOutletId };
     });
     if (!searchQuery.value) return resultsWithStock;
     return resultsWithStock.filter(ing => ing.name.toLowerCase().includes(searchQuery.value.toLowerCase()));

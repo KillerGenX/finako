@@ -62,6 +62,12 @@ CREATE TABLE public.outlets (
     created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
+CREATE TABLE public.profile_outlets (
+  profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  outlet_id UUID NOT NULL REFERENCES public.outlets(id) ON DELETE CASCADE,
+  PRIMARY KEY (profile_id, outlet_id) -- Mencegah duplikasi data
+);
+COMMENT ON TABLE public.profile_outlets IS 'Menghubungkan user ke outlet mana saja yang bisa mereka akses (Many-to-Many).';
 
 -- =================================================================
 -- Tabel Produk & Inventaris
@@ -154,6 +160,29 @@ CREATE TABLE public.ingredient_stock_movements (
     ref TEXT, -- keterangan atau referensi transaksi
     created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
+
+-- Perintah 1: Menambahkan harga modal untuk produk simpel per outlet
+-- Disimpan dalam bentuk INTEGER (satuan sen/rupiah terkecil) untuk presisi
+ALTER TABLE public.product_outlets
+ADD COLUMN cost_price INTEGER;
+
+COMMENT ON COLUMN public.product_outlets.cost_price IS 'Harga modal/beli untuk produk simpel di outlet ini.';
+
+
+-- Perintah 2: Menambahkan harga modal untuk varian produk per outlet
+-- Ini untuk kasus seperti Kaos Ukuran M vs XL
+ALTER TABLE public.product_variant_outlets
+ADD COLUMN cost_price INTEGER;
+
+COMMENT ON COLUMN public.product_variant_outlets.cost_price IS 'Harga modal/beli untuk varian spesifik di outlet ini.';
+
+
+-- Perintah 3: Menambahkan harga modal untuk bahan baku per outlet
+-- Ini adalah fondasi untuk produk komposit
+ALTER TABLE public.ingredient_outlets
+ADD COLUMN cost_price INTEGER;
+
+COMMENT ON COLUMN public.ingredient_outlets.cost_price IS 'Harga modal/beli per unit dasar bahan baku di outlet ini.';
 
 -- =================================================================
 -- Tabel Transaksi

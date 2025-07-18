@@ -28,6 +28,11 @@ export const useUserStoreRefactored = defineStore('userRefactored', () => {
   const user = ref(null);
   const isReady = ref(false);
   const activeOutletId = ref(null);
+  const accessibleOutlets = ref([]);
+  const activeOutlet = computed(() => {
+    if (!activeOutletId.value || accessibleOutlets.value.length === 0) return null;
+    return accessibleOutlets.value.find(o => o.id === activeOutletId.value);
+  });
 
   // --- GETTERS (dari kode Anda yang sudah lengkap) ---
   const isLoggedIn = computed(() => !!user.value);
@@ -44,16 +49,53 @@ export const useUserStoreRefactored = defineStore('userRefactored', () => {
 
   // --- ACTIONS UTAMA (dari kode Anda yang sudah lengkap) ---
   async function fetchUserSession() {
-    // ... (SELURUH ISI FUNGSI INI SAMA PERSIS SEPERTI YANG ANDA KIRIM, TIDAK DIUBAH)
     isReady.value = false;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const { data: userProfile, error } = await supabase.from('profiles').select(`*, roles(name), businesses(*, subscriptions(*, plans(*)))`).eq('id', session.user.id).single();
-        if (error) throw error;
+        // 1. Ambil data profil & bisnis utama
+        // === PERUBAHAN KRUSIAL: Kembalikan query untuk mengambil langganan ===
+        const { data: userProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select(`*, roles(name), businesses(*, subscriptions(*, plans(*)))`) // Query yang benar!
+          .eq('id', session.user.id)
+          .single();
+        // ====================================================================
+
+        if (profileError) throw profileError;
+        
         user.value = session.user;
         profile.value = userProfile;
         business.value = userProfile.businesses;
+
+        // 2. Tentukan daftar outlet yang bisa diakses (logika ini tetap sama)
+        if (userProfile.roles.name === 'Owner') {
+          const { data: allOutlets, error: outletsError } = await supabase
+            .from('outlets')
+            .select('*')
+            .eq('business_id', business.value.id);
+          if (outletsError) throw outletsError;
+          accessibleOutlets.value = allOutlets;
+        } else {
+          const { data: assigned, error: assignedError } = await supabase
+            .from('profile_outlets')
+            .select('outlets(*)')
+            .eq('profile_id', user.value.id);
+          if (assignedError) throw assignedError;
+          accessibleOutlets.value = assigned.map(a => a.outlets);
+        }
+
+        // 3. Set outlet aktif (logika ini tetap sama)
+        const savedOutletId = localStorage.getItem('finako-active-outlet');
+        if (accessibleOutlets.value.length > 0) {
+            const isValidSavedOutlet = accessibleOutlets.value.some(o => o.id === savedOutletId);
+            if (isValidSavedOutlet) {
+                activeOutletId.value = savedOutletId;
+            } else {
+                activeOutletId.value = accessibleOutlets.value[0].id;
+            }
+        }
+        
       } else {
         clearUserSession();
       }
@@ -64,6 +106,7 @@ export const useUserStoreRefactored = defineStore('userRefactored', () => {
       isReady.value = true;
     }
   }
+
 
   function clearUserSession() {
     user.value = null;
@@ -229,14 +272,27 @@ async function setupBusinessAndFirstOutlet(businessData, outletData) {
       return { success: false };
     }
   }
+
+  function setActiveOutlet(outletId) {
+    if (outletId && accessibleOutlets.value.some(o => o.id === outletId)) {
+      activeOutletId.value = outletId;
+      // Simpan pilihan user di localStorage agar tidak hilang saat refresh
+      localStorage.setItem('finako-active-outlet', outletId);
+      uiStore.showNotification(`Bekerja di outlet: ${activeOutlet.value?.name}`, 'info', 2000);
+    } else {
+      console.error("Attempted to set an invalid or inaccessible outlet.");
+    }
+  }
+
+
   return {
     // State (dari kode Anda)
-    profile, business, user, isReady, activeOutletId,
+    profile, business, user, isReady, activeOutletId, accessibleOutlets, activeOutlet,
     // Getters (dari kode Anda)
     isLoggedIn, businessId, userId, userEmail, userFullName, activeRole, currentSubscription, isOnboardingCompleted,
     // Actions (dari kode Anda)
     fetchUserSession, loginWithEmailPassword, logout, handleAuthRedirects,
     // Actions Baru
-    register, completeOnboarding, getPackages,setupBusinessAndFirstOutlet,updateBusinessDetails,
+    register, completeOnboarding, getPackages,setupBusinessAndFirstOutlet,updateBusinessDetails,setActiveOutlet,
   };
 });

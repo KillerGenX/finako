@@ -193,29 +193,29 @@ async function fetchInitialData() {
 }
 
     // Perintah untuk "Ambil data produk sekarang!"
-   async function fetchProducts() {
-    if (!userStore.businessId) return;
-    isLoading.value = true;
-    error.value = null;
-    try {
-        const { data, error: queryError } = await supabase
-            .from('products')
-            .select(`
-                *,
-                product_outlets ( outlet_id, stock_quantity, price ),
-                product_variants ( *, product_variant_outlets (outlet_id, stock_quantity, price) ),
-                product_recipes ( quantity_used, ingredient_id )
-            `)
-            .eq('business_id', userStore.businessId);
-
-        if (queryError) throw queryError;
-        products.value = data || [];
-    } catch (e) {
-        error.value = `Gagal mengambil produk: ${e.message}`;
-    } finally {
-        isLoading.value = false;
-    }
-}
+    async function fetchProducts() {
+        if (!userStore.businessId) return;
+        isLoading.value = true;
+        error.value = null;
+        try {
+            const { data, error: queryError } = await supabase
+                .from('products')
+                .select(`
+                    *,
+                    product_outlets ( outlet_id, stock_quantity, price, cost_price, is_active ),
+                    product_variants ( *, product_variant_outlets (outlet_id, stock_quantity, price, cost_price, is_active) ),
+                    product_recipes ( quantity_used, ingredient_id )
+                `)
+                .eq('business_id', userStore.businessId);
+      
+            if (queryError) throw queryError;
+            products.value = data || [];
+        } catch (e) {
+            error.value = `Gagal mengambil produk: ${e.message}`;
+        } finally {
+            isLoading.value = false;
+        }
+      }
 
 // --- ACTIONS UNTUK KATEGORI ---
 
@@ -506,16 +506,15 @@ async function updateProduct({ formData, photoFile }) {
 }
 
 async function saveProductStock(payload) {
-    // payload = { product_id, outlet_id, stock_quantity, price, is_active }
     isLoading.value = true;
     try {
+        // Payload sudah berisi cost_price dari modal
         const { error } = await supabase
             .from('product_outlets')
-            .upsert(payload, { onConflict: 'product_id, outlet_id' }); // Update jika sudah ada, insert jika belum
+            .upsert(payload, { onConflict: 'product_id, outlet_id' });
 
         if (error) throw error;
         
-        // Panggil fetchProducts untuk refresh data di halaman
         await fetchProducts(); 
         useUIStore().showNotification('Stok & harga berhasil diperbarui.', 'success');
         return true;
@@ -530,9 +529,9 @@ async function saveProductStock(payload) {
 }
 
 async function saveVariantStocks(variantsPayload) {
-    // variantsPayload adalah array of objects, cth: [{ variant_id, outlet_id, ... }]
     isLoading.value = true;
     try {
+        // variantsPayload sudah berisi cost_price dari modal
         const { error } = await supabase
             .from('product_variant_outlets')
             .upsert(variantsPayload, { onConflict: 'variant_id, outlet_id' });
