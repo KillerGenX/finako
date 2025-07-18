@@ -1,83 +1,94 @@
 <template>
   <div v-if="transaction" class="receipt-container font-mono text-xs text-black bg-white p-1" style="width: 280px;">
+    <!-- Bagian Header -->
     <div class="text-center">
       <h2 class="text-sm font-bold uppercase">{{ businessName }}</h2>
       <p class="text-xs">{{ outletName }}</p>
       <p class="text-xs">{{ outletAddress }}</p>
     </div>
     
-    <hr class="border-dashed border-black my-2">
+    <!-- Kembali menggunakan <hr> dengan class untuk styling yang kuat -->
+    <hr class="separator">
     
     <table class="w-full text-xs">
-    <tbody>
-      <tr>
-        <td>ID:</td>
-        <td class="text-right">{{ transaction?.id?.slice(-8).toUpperCase() }}</td>
-      </tr>
-      <tr>
-        <td>Tanggal:</td>
-        <td class="text-right">{{ new Date(transaction.created_at).toLocaleString('id-ID', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'}) }}</td>
-      </tr>
-      <tr>
-        <td>Kasir:</td>
-        <td class="text-right">{{ cashierName }}</td>
-      </tr>
-    </tbody>
+      <tbody>
+        <tr>
+          <td class="text-left">ID:</td>
+          <td class="text-right">{{ transaction?.id?.slice(-8).toUpperCase() }}</td>
+        </tr>
+        <tr>
+          <td class="text-left">Tanggal:</td>
+          <td class="text-right">{{ new Date(transaction.created_at).toLocaleString('id-ID', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'}) }}</td>
+        </tr>
+        <tr>
+          <td class="text-left">Kasir:</td>
+          <td class="text-right">{{ cashierName }}</td>
+        </tr>
+      </tbody>
     </table>
 
-    <!-- === PERUBAHAN DI SINI: Tampilkan Info Pelanggan Jika Ada === -->
     <div v-if="customerName">
-      <hr class="border-dashed border-black my-2">
+      <hr class="separator">
       <table class="w-full text-xs">
         <tbody>
           <tr>
-            <td>Pelanggan:</td>
+            <td class="text-left">Pelanggan:</td>
             <td class="text-right font-semibold">{{ customerName }}</td>
           </tr>
           <tr v-if="customerPhone">
-            <td>Telepon:</td>
+            <td class="text-left">Telepon:</td>
             <td class="text-right">{{ customerPhone }}</td>
           </tr>
         </tbody>
       </table>
     </div>
-    <!-- === AKHIR PERUBAHAN === -->
     
-    <hr class="border-dashed border-black my-2">
+    <hr class="separator">
     
-    <div v-for="item in transaction.items" :key="item.id" class="text-xs">
-        <p class="font-semibold">{{ item.product_name }}</p>
-        <p v-if="item.variant_name" class="pl-2">- {{ item.variant_name }}</p>
-        <table class="w-full">
-          <tbody>
-            <tr>
-                <td class="text-left">{{ item.quantity }} x {{ formatCurrency(item.price_per_item, false) }}</td>
-                <td class="text-right">{{ formatCurrency(item.total_price, false) }}</td>
-            </tr>
-          </tbody>
-        </table>
-    </div>
-    
-    <hr class="border-dashed border-black my-2">
-
+    <!-- Struktur Tabel Utama untuk Item dan Ringkasan -->
     <table class="w-full text-xs">
-        <tbody>
-            <tr><td>Subtotal</td><td class="text-right">{{ formatCurrency(transaction.total_amount) }}</td></tr>
-            <tr v-if="transaction.tax_amount > 0"><td>Pajak</td><td class="text-right">{{ formatCurrency(transaction.tax_amount) }}</td></tr>
-            <tr v-if="transaction.service_charge_amount > 0"><td>Layanan</td><td class="text-right">{{ formatCurrency(transaction.service_charge_amount) }}</td></tr>
-        </tbody>
-    </table>
-    
-    <hr class="border-t-2 border-dashed border-black my-2">
+      <!-- Bagian Daftar Item -->
+      <tbody>
+        <template v-for="item in transaction.items" :key="item.id">
+          <tr>
+            <td colspan="2" class="font-semibold">{{ item.product_name }}</td>
+          </tr>
+          <tr v-if="item.variant_name">
+            <td colspan="2" class="pl-2">- {{ item.variant_name }}</td>
+          </tr>
+          <tr>
+            <td class="text-left">{{ item.quantity }} x {{ formatCurrency(item.price_per_item, false) }}</td>
+            <td class="text-right">{{ formatCurrency(item.total_price) }}</td>
+          </tr>
+        </template>
+      </tbody>
 
-    <table class="w-full font-bold text-sm">
-        <tbody>
-            <tr><td>TOTAL</td><td class="text-right">{{ formatCurrency(transaction.final_amount) }}</td></tr>
-            <tr><td>BAYAR</td><td class="text-right">{{ formatCurrency(paymentDetails?.amount_paid || transaction.final_amount) }}</td></tr>
-            <tr><td>KEMBALI</td><td class="text-right">{{ formatCurrency(paymentDetails?.change || 0) }}</td></tr>
-        </tbody>
-    </table>
+      <!-- Pemisah antara Item dan Ringkasan -->
+      <tbody>
+        <tr><td colspan="2"><hr class="separator"></td></tr>
+      </tbody>
 
+      <!-- Bagian Ringkasan Biaya -->
+      <tbody>
+          <tr><td class="text-left">Subtotal</td><td class="text-right">{{ formatCurrency(transaction.total_amount) }}</td></tr>
+          <tr v-if="transaction.tax_amount > 0"><td class="text-left">Pajak</td><td class="text-right">{{ formatCurrency(transaction.tax_amount) }}</td></tr>
+          <tr v-if="transaction.service_charge_amount > 0"><td class="text-left">Layanan</td><td class="text-right">{{ formatCurrency(transaction.service_charge_amount) }}</td></tr>
+      </tbody>
+
+      <!-- Pemisah sebelum Total -->
+      <tbody>
+        <tr><td colspan="2"><hr class="separator double-line"></td></tr>
+      </tbody>
+      
+      <!-- Bagian Total & Pembayaran -->
+      <tbody class="font-bold text-sm">
+          <tr><td class="text-left">TOTAL</td><td class="text-right">{{ formatCurrency(transaction.final_amount) }}</td></tr>
+          <tr><td class="text-left">BAYAR</td><td class="text-right">{{ formatCurrency(paymentDetails?.amount_paid || transaction.final_amount) }}</td></tr>
+          <tr><td class="text-left">KEMBALI</td><td class="text-right">{{ formatCurrency(paymentDetails?.change || 0) }}</td></tr>
+      </tbody>
+    </table>
+ 
+    <!-- Bagian Footer -->
     <div class="text-center mt-3">
       <p class="text-xs font-semibold">Terima Kasih!</p>
       <p class="text-xs">Powered by Finako</p>
@@ -86,7 +97,8 @@
 </template>
 
 <script setup>
-// === PERUBAHAN DI SINI: Tambahkan props baru ===
+// Script setup ini sudah benar dan tidak perlu diubah.
+// Ia mendefinisikan semua data yang dibutuhkan oleh template.
 defineProps({
   transaction: Object,
   paymentDetails: Object,
@@ -94,14 +106,13 @@ defineProps({
   outletName: String,
   outletAddress: String,
   cashierName: String,
-  customerName: String,   // Prop baru
-  customerPhone: String,  // Prop baru
+  customerName: String,
+  customerPhone: String,
 });
-// === AKHIR PERUBAHAN ===
-
+ 
 function formatCurrency(value, usePrefix = true) {
-  if (typeof value !== 'number') return '0';
-  const prefix = usePrefix ? 'Rp ' : '';
+  if (typeof value !== 'number') return 'Rp 0';
+  const prefix = usePrefix ? 'Rp ' : ''; 
   return prefix + new Intl.NumberFormat('id-ID').format(value);
 }
 </script>

@@ -201,6 +201,34 @@ async function setupBusinessAndFirstOutlet(businessData, outletData) {
     }
   }
 
+  async function updateBusinessDetails(newDetails) {
+    if (!businessId.value) {
+      uiStore.showNotification('ID Bisnis tidak ditemukan. Tidak dapat menyimpan.', 'error');
+      return { success: false };
+    }
+  
+    try {
+      // Langkah update tidak berubah, tapi kita tidak perlu `select()` lagi
+      const { error } = await supabase
+        .from('businesses')
+        .update(newDetails)
+        .eq('id', businessId.value);
+      
+      if (error) throw error;
+  
+      // === SOLUSI: Panggil ulang fetchUserSession() ===
+      // Ini akan mengambil kembali semua data (termasuk langganan)
+      // dan memastikan seluruh state aplikasi kembali sinkron.
+      await fetchUserSession(); 
+      
+      uiStore.showNotification('Pengaturan usaha berhasil disimpan!', 'success');
+      return { success: true };
+    } catch (e) {
+      console.error('Error updating business details:', e);
+      uiStore.showNotification(e.message, 'error');
+      return { success: false };
+    }
+  }
   return {
     // State (dari kode Anda)
     profile, business, user, isReady, activeOutletId,
@@ -209,6 +237,6 @@ async function setupBusinessAndFirstOutlet(businessData, outletData) {
     // Actions (dari kode Anda)
     fetchUserSession, loginWithEmailPassword, logout, handleAuthRedirects,
     // Actions Baru
-    register, completeOnboarding, getPackages,setupBusinessAndFirstOutlet,
+    register, completeOnboarding, getPackages,setupBusinessAndFirstOutlet,updateBusinessDetails,
   };
 });

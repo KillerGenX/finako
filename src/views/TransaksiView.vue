@@ -113,7 +113,6 @@
 
       <!-- Tombol Bayar -->
       <button @click="isPaymentModalVisible = true" class="btn btn-primary ...">Bayar</button>
-      <button @click="testBackend" class="btn btn-warning w-full mt-2">Test Backend PDF</button>
     </div>
   </div>
   
@@ -282,26 +281,5 @@ function handleNewTransaction() {
 }
 
 
-async function testBackend() {
-  console.log('Menguji koneksi ke backend kustom via Vite Proxy...');
-  try {
-    // Panggil path proxy lokal. Vite yang akan meneruskannya.
-    const endpoint = '/api/generate-receipt'; 
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ transaction_id: 'test-proxy-final-123' }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Gagal menghubungi backend.');
-    
-    console.log('✅ Sukses! Respons dari backend:', data);
-    alert(`Sukses! Backend merespons: ${data.message}`);
-  } catch (error) {
-    console.error('❌ Gagal! Error saat menghubungi backend:', error);
-    alert(`Gagal terhubung ke backend: ${error.message}`);
-  }
-}
 </script>
