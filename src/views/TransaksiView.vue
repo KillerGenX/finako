@@ -137,6 +137,8 @@
   :show="isSuccessModalVisible"
   :transaction-id="lastTransactionId"
   :payment-details="lastPaymentDetails"
+  :customerName="lastPaymentDetails?.customer_name"
+  :customerPhone="lastPaymentDetails?.customer_phone"
   @new-transaction="handleNewTransaction"
 />
 

@@ -170,6 +170,8 @@ CREATE TABLE public.transactions (
     final_amount INTEGER NOT NULL,
     payment_method VARCHAR(50) NOT NULL,
     created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    customer_name (Tipe: TEXT, Nullable: true)
+customer_phone (Tipe: TEXT, Nullable: true)
 );
 
 ALTER TABLE public.transactions

@@ -24,6 +24,11 @@ export const useTransactionStore = defineStore('transaction', {
           service_charge_amount: cartStore.serviceChargeAmount,
           final_amount: cartStore.grandTotal,
           payment_method: paymentDetails.payment_method,
+          // --- PERUBAHAN DI SINI ---
+          // Kita gunakan `|| null` untuk memastikan nilainya adalah NULL di database jika inputnya kosong.
+          // Ini lebih konsisten untuk data.
+          customer_name: paymentDetails.customer_name || null,
+          customer_phone: paymentDetails.customer_phone || null,
         };
 
         // 2. Simpan "kepala" transaksi dan dapatkan ID-nya
@@ -53,10 +58,7 @@ export const useTransactionStore = defineStore('transaction', {
         if (itemsError) throw itemsError;
 
         // 5. Potong stok (ini bagian yang kompleks, kita bisa gunakan RPC nanti)
-        // Untuk sekarang, kita lakukan satu per satu
         for (const item of cartStore.items) {
-          // TODO: Buat fungsi RPC `update_stock` untuk menangani ini secara transaksional
-          // agar jika salah satu gagal, semua dibatalkan.
           await supabase.rpc('update_stock_on_sale', {
               p_id: item.has_variants ? item.product_id : item.id,
               v_id: item.has_variants ? item.id : null,
