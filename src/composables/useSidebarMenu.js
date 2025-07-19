@@ -12,8 +12,8 @@ import {
 
 // Daftar menu master tetap sama, tidak ada yang berubah di sini.
 const allMenus = [
-    { name: 'Dasbor', route: '/', icon: HomeIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'admin', 'manager', 'staff'] },
-    { name: 'Kasir (POS)', route: '/transaksi', icon: ShoppingCartIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'admin', 'manager', 'staff'] },
+    { name: 'Dasbor', route: '/', icon: HomeIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'kasir', 'manager', 'staff'] },
+    { name: 'Kasir (POS)', route: '/transaksi', icon: ShoppingCartIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'kasir', 'manager', 'staff'] },
     { name: 'Produk', route: '/produk', icon: ArchiveBoxIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
     { name: 'Stok', route: '/stok', icon: CubeIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
     { name: 'Biaya', route: '/biaya', icon: BuildingStorefrontIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
@@ -21,7 +21,7 @@ const allMenus = [
     { name: 'Pelanggan', route: '/pelanggan', icon: UserGroupIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
     { name: 'Laporan', route: '/laporan', icon: ChartPieIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'admin'] },
     { name: 'Pegawai', route: '/pegawai', icon: UsersIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin'] },
-    { name: 'Absensi', route: '/absensi', icon: ClockIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
+    { name: 'Absensi', route: '/absensi', icon: ClockIcon, plans: ['basic','pro', 'enterprise'], roles: ['owner', 'kasir', 'manager'] },
     { name: 'Pengaturan', route: '/pengaturan', icon: Cog6ToothIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner'] }
 ];
 

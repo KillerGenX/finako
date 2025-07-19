@@ -3,8 +3,10 @@
     <!-- Header Dasbor dengan Pemilihan Outlet -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
       <div>
-        <h1 class="text-2xl font-bold">Dasbor</h1>
-        <p class="text-base-content/70">Ringkasan aktivitas bisnis Anda.</p>
+        <!-- Sapaan yang dinamis berdasarkan nama -->
+        <h1 class="text-2xl font-bold">Halo, {{ userStore.userFullName }}!</h1>
+        <p v-if="userStore.activeRole === 'Owner'" class="text-base-content/70">Ringkasan aktivitas bisnis Anda.</p>
+        <p v-else class="text-base-content/70">Selamat bekerja, semoga harimu menyenangkan.</p>
       </div>
 
       <!-- Blok Kanan: Pemilihan Outlet Cerdas -->
@@ -41,11 +43,19 @@
         <span>Gagal memuat data dasbor: {{ error }}</span>
       </div>
     </div>
-
-    <!-- Tampilan jika tidak ada outlet aktif -->
-    <div v-else-if="!userStore.activeOutletId && userStore.accessibleOutlets.length > 0" class="card bg-base-200 text-center p-8">
-      <h2 class="text-xl font-semibold">Selamat Datang!</h2>
-      <p class="mt-2">Silakan pilih outlet di pojok kanan atas untuk melihat ringkasan penjualan.</p>
+    
+    <!-- ===================================================================== -->
+    <!-- === BLOK BARU: Tampilan khusus untuk pegawai yang menunggu akses === -->
+    <!-- ===================================================================== -->
+    <div v-else-if="userStore.activeRole !== 'Owner' && userStore.accessibleOutlets.length === 0" class="card bg-base-200 text-center p-8">
+      <h2 class="text-xl font-semibold">Akun Anda Sudah Aktif!</h2>
+      <p class="mt-2">Saat ini Anda belum memiliki akses ke outlet manapun. Mohon hubungi pemilik bisnis untuk memberikan Anda akses kerja.</p>
+    </div>
+    
+    <!-- Tampilan untuk Owner yang belum punya outlet -->
+    <div v-else-if="userStore.activeRole === 'Owner' && userStore.accessibleOutlets.length === 0" class="card bg-base-200 text-center p-8">
+      <h2 class="text-xl font-semibold">Belum Ada Outlet</h2>
+      <p class="mt-2">Anda belum membuat outlet. Silakan buat outlet pertama Anda di menu <router-link to="/pengaturan" class="link link-primary">Pengaturan</router-link>.</p>
     </div>
 
     <!-- Tampilan utama dasbor jika ada data -->
@@ -54,26 +64,35 @@
         Ringkasan untuk: <span class="text-primary">{{ userStore.activeOutlet?.name }}</span>
       </h2>
 
-      <!-- Kartu-kartu Ringkasan Dinamis -->
+      <!-- Kartu-kartu Ringkasan (Bagian ini sekarang dibedakan per peran) -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Kartu Omzet (Owner & Kasir) -->
         <div class="card bg-base-100 shadow">
           <div class="card-body">
             <h3 class="card-title text-sm font-normal">Omzet Hari Ini</h3>
             <p class="text-3xl font-extrabold">{{ formatCurrency(dashboardData.daily_summary.total_revenue) }}</p>
           </div>
         </div>
-        <div class="card bg-base-100 shadow">
+        
+        <!-- ========================================================== -->
+        <!-- === KARTU LABA: Hanya untuk Owner === -->
+        <!-- ========================================================== -->
+        <div v-if="userStore.activeRole === 'Owner'" class="card bg-base-100 shadow">
           <div class="card-body">
             <h3 class="card-title text-sm font-normal">Laba Kotor Hari Ini</h3>
             <p class="text-3xl font-extrabold">{{ formatCurrency(dashboardData.daily_summary.total_profit) }}</p>
           </div>
         </div>
+
+        <!-- Kartu Transaksi (Owner & Kasir) -->
         <div class="card bg-base-100 shadow">
           <div class="card-body">
             <h3 class="card-title text-sm font-normal">Transaksi Hari Ini</h3>
             <p class="text-3xl font-extrabold">{{ dashboardData.daily_summary.transaction_count }}</p>
           </div>
         </div>
+        
+        <!-- Kartu Rata-rata/Transaksi (Owner & Kasir) -->
         <div class="card bg-base-100 shadow">
           <div class="card-body">
             <h3 class="card-title text-sm font-normal">Rata-rata/Transaksi</h3>
@@ -111,7 +130,7 @@
       </div>
 
        <!-- Di sini nanti kita bisa tambahkan grafik -->
-       <div class="card bg-base-100 shadow mt-6">
+       <div v-if="userStore.activeRole === 'Owner'" class="card bg-base-100 shadow mt-6">
         <div class="card-body">
           <h3 class="card-title">Grafik Penjualan 7 Hari Terakhir</h3>
           <!-- Ganti placeholder dengan komponen SalesChart yang sudah Anda buat -->

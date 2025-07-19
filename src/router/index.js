@@ -22,6 +22,7 @@ import PengaturanView from '@/views/PengaturanView.vue'
 import ProdukView from '@/views/ProdukView.vue'
 import StokView from '@/views/StokView.vue'
 import TransaksiView from '@/views/TransaksiView.vue'
+import AcceptInvitationView from '@/views/AcceptInvitationView.vue';
 
 const routes = [
   // Public Routes (No Authentication Required)
@@ -213,6 +214,11 @@ const routes = [
     meta: {
       title: 'Halaman Tidak Ditemukan - Finako'
     }
+  },
+  {
+    path: '/accept-invitation',
+    name: 'AcceptInvitation',
+    component: AcceptInvitationView,
   }
 ]
 
@@ -247,35 +253,44 @@ router.beforeEach(async (to, from, next) => {
 
   // === Logika Routing ===
 
-  // Jika route butuh login, TAPI user belum login
-  if (to.meta.requiresAuth && !isLoggedIn) {
-    return next({ name: 'Login', query: { redirect: to.fullPath } })
+   // Jika route butuh login, TAPI user belum login
+   if (to.meta.requiresAuth && !isLoggedIn) {
+    return next({ name: 'Login', query: { redirect: to.fullPath } });
   }
 
   // Jika user sudah login TAPI mencoba akses halaman login/register
   if (isLoggedIn && ['Login', 'Register'].includes(to.name)) {
-    return next({ name: 'Dashboard' })
+    return next({ name: 'Dashboard' });
   }
 
-  // --- Alur SaaS Flow untuk user yang SUDAH Login ---
+  // --- Alur SaaS Flow untuk user yang SUDAH Login (VERSI BARU) ---
   if (isLoggedIn && to.meta.requiresAuth) {
-    // 1. Cek Langganan
-    if (subscriptionStatus !== 'active') {
-      // Jika mencoba akses halaman selain payment-info, paksa ke payment-info
-      if (to.name !== 'PaymentInfo') return next({ name: 'PaymentInfo' })
-    }
+    
+    // Ambil peran dari store
+    const userRole = userStore.activeRole; 
 
-    // 2. Cek Onboarding
-    else if (!isOnboardingDone) {
-      // Jika langganan aktif TAPI onboarding belum selesai
-      if (to.name !== 'Onboarding') return next({ name: 'Onboarding' })
+    // Hanya Owner yang dicek alur langganan & onboarding
+    if (userRole === 'Owner') {
+        // 1. Cek Langganan
+        if (subscriptionStatus !== 'active') {
+            if (to.name !== 'PaymentInfo') return next({ name: 'PaymentInfo' });
+        }
+        // 2. Cek Onboarding
+        else if (!isOnboardingDone) {
+            if (to.name !== 'Onboarding') return next({ name: 'Onboarding' });
+        }
+        // 3. Jika Owner sudah selesai semua
+        else {
+            if (['Onboarding', 'PaymentInfo'].includes(to.name)) {
+                return next({ name: 'Dashboard' });
+            }
+        }
     }
-
-    // 3. Jika langganan aktif DAN onboarding selesai
+    // Kasus untuk non-Owner (misal, Kasir)
     else {
-      // Jika mencoba akses halaman onboarding/payment, lempar ke dashboard
+      // Cegah non-owner akses halaman saas flow secara manual
       if (['Onboarding', 'PaymentInfo'].includes(to.name)) {
-        return next({ name: 'Dashboard' })
+         return next({ name: 'Dashboard' });
       }
     }
   }

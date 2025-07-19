@@ -230,6 +230,23 @@ CREATE TABLE public.employee_attendances (
     notes TEXT
 );
 
+-- Menambahkan kolom untuk menyimpan path/URL foto bukti absensi
+ALTER TABLE public.employee_attendances
+ADD COLUMN clock_in_photo_path TEXT,
+ADD COLUMN clock_out_photo_path TEXT;
+
+-- Menambahkan kolom untuk menyimpan koordinat GPS
+-- NUMERIC(10, 7) adalah pilihan yang baik untuk presisi latitude & longitude
+ALTER TABLE public.employee_attendances
+ADD COLUMN clock_in_latitude NUMERIC(10, 7),
+ADD COLUMN clock_in_longitude NUMERIC(10, 7),
+ADD COLUMN clock_out_latitude NUMERIC(10, 7),
+ADD COLUMN clock_out_longitude NUMERIC(10, 7);
+
+-- Menambahkan komentar untuk menjelaskan fungsi kolom (praktik yang baik)
+COMMENT ON COLUMN public.employee_attendances.clock_in_photo_path IS 'Path atau URL ke file foto bukti clock-in di Supabase Storage.';
+COMMENT ON COLUMN public.employee_attendances.clock_out_latitude IS 'Koordinat Latitude saat melakukan clock-out.';
+
 -- Tabel untuk menyimpan program promosi/diskon
 CREATE TABLE public.promotions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
