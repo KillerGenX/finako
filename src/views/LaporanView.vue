@@ -1,158 +1,177 @@
-<script setup>
-import { ref, onMounted, computed, watch } from 'vue';
-import { useUserStore } from '@/stores/userStore';
-import { ArrowPathIcon } from '@heroicons/vue/24/solid';
-
-const userStore = useUserStore();
-const loading = ref(true);
-const salesData = ref([]);
-
-// State untuk filter tanggal, defaultnya bulan ini
-const startDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
-const endDate = ref(new Date().toISOString().split('T')[0]);
-
-// Fungsi utama untuk mengambil data laporan
-async function fetchSalesReport() {
-  if (!userStore.organization?.id || !startDate.value || !endDate.value) return;
-  
-  loading.value = true;
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/sales`);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const allSalesData = await response.json();
-    
-    // Filter data berdasarkan tanggal di frontend (karena belum ada query parameter di backend)
-    const endOfDay = `${endDate.value}T23:59:59`;
-    const startDateTime = new Date(startDate.value);
-    const endDateTime = new Date(endOfDay);
-    
-    const filteredData = allSalesData.filter(sale => {
-      const saleDate = new Date(sale.created_at);
-      return saleDate >= startDateTime && saleDate <= endDateTime;
-    });
-    
-    salesData.value = filteredData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    
-  } catch (error) {
-    userStore.showNotification(`Error mengambil laporan: ${error.message}`, 'error');
-  } finally {
-    loading.value = false;
-  }
-}
-
-// --- Computed Properties untuk Statistik ---
-const summary = computed(() => {
-  if (salesData.value.length === 0) {
-    return { totalOmzet: 0, totalProfit: 0, transactionCount: 0 };
-  }
-  
-  const totalOmzet = salesData.value.reduce((sum, sale) => sum + sale.total, 0);
-  const transactionCount = salesData.value.length;
-  
-  // Kalkulasi profit membutuhkan harga modal dari 'items'
-  const totalCost = salesData.value.reduce((sum, sale) => {
-    if (!sale.items || !Array.isArray(sale.items)) return sum;
-    
-    const itemsCost = sale.items.reduce((itemSum, item) => {
-      return itemSum + ((item.cost_price || 0) * (item.quantity || 0));
-    }, 0);
-    return sum + itemsCost;
-  }, 0);
-  
-  const totalProfit = totalOmzet - totalCost;
-  
-  return { totalOmzet, totalProfit, transactionCount };
-});
-
-function formatRupiah(angka) {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
-}
-
-// --- Lifecycle Hooks ---
-onMounted(() => { if (userStore.isReady) fetchSalesReport(); });
-watch(() => userStore.isReady, (ready) => { if (ready) fetchSalesReport(); });
-</script>
-
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-      <div>
-        <h1 class="text-3xl font-bold">Laporan Penjualan</h1>
-        <p class="text-base-content/70">Analisis performa penjualan Anda berdasarkan periode.</p>
-      </div>
-    </div>
+  <div class="p-4 md:p-6">
+    <div class="max-w-7xl mx-auto">
+      <h1 class="text-2xl font-bold mb-6">Laporan Bisnis</h1>
 
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body flex-col sm:flex-row items-center gap-4">
+      <!-- ===== FILTER GLOBAL ===== -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 p-4 bg-base-200 rounded-lg">
+        
+        <!-- ======================================================= -->
+        <!-- === BAGIAN DATEPICKER YANG DIGANTI === -->
+        <!-- ======================================================= -->
         <div class="form-control">
-          <label class="label pb-1"><span class="label-text text-xs">Dari Tanggal</span></label>
-          <input type="date" v-model="startDate" class="input input-bordered input-sm" />
+          <label class="label"><span class="label-text">Pilih Rentang Tanggal</span></label>
+          <Datepicker 
+            v-model="dateValue" 
+            range 
+            :enable-time-picker="false" 
+            :dark="isDarkMode"
+            format="dd MMM yyyy"
+            locale="id"
+            :preset-ranges="presetRanges"
+            select-text="Pilih"
+            cancel-text="Batal"
+            auto-apply
+            placeholder="Pilih rentang tanggal"
+          >
+            <template #input-icon>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5 ml-2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M-7.5 12h18" />
+              </svg>
+            </template>
+          </Datepicker>
         </div>
+        
+        <!-- Filter Pegawai (TIDAK BERUBAH) -->
         <div class="form-control">
-          <label class="label pb-1"><span class="label-text text-xs">Sampai Tanggal</span></label>
-          <input type="date" v-model="endDate" class="input input-bordered input-sm" />
+          <label class="label"><span class="label-text">Filter Outlet</span></label>
+          <select class="select select-bordered w-full" v-model="selectedOutletId">
+            <option :value="null">Semua Outlet</option>
+            <option v-for="outlet in userStore.accessibleOutlets" :key="outlet.id" :value="outlet.id">
+              {{ outlet.name }}
+            </option>
+          </select>
         </div>
-        <div class="form-control mt-auto">
-          <button @click="fetchSalesReport" class="btn btn-primary btn-sm" :disabled="loading">
-            <ArrowPathIcon v-if="!loading" class="h-5 w-5"/>
-            <span v-if="loading" class="loading loading-spinner loading-xs"></span>
-            Terapkan Filter
-          </button>
+
+        <!-- Filter Pegawai -->
+        <div class="form-control">
+          <label class="label"><span class="label-text">Filter Pegawai</span></label>
+          <select class="select select-bordered w-full" v-model="selectedEmployeeId">
+            <option :value="null">Semua Pegawai</option>
+            <option v-for="employee in employeeList" :key="employee.id" :value="employee.id">
+              {{ employee.full_name }}
+            </option>
+          </select>
         </div>
+
+      </div>
+
+      <!-- ===== NAVIGASI TAB (TIDAK BERUBAH) ===== -->
+      <div role="tablist" class="tabs tabs-lifted tabs-lg">
+        <a role="tab" class="tab" :class="{'tab-active': activeTab === 'absensi'}" @click="activeTab = 'absensi'">
+          Laporan Absensi
+        </a>
+        <a role="tab" class="tab" @click="activeTab = 'penjualan'" :class="{'tab-active': activeTab === 'penjualan'}">
+          Laporan Penjualan
+        </a>
+      </div>
+
+      <!-- ===== KONTEN LAPORAN (PENYESUAIAN KECIL PADA PROPS) ===== -->
+      <div class="bg-base-100 rounded-b-lg p-6 shadow-md -mt-px pt-10">
+        <div v-if="activeTab === 'absensi'">
+          <!-- Prop yang dikirim sekarang menjadi 'dateRange' (array) -->
+          <AttendanceReport 
+            v-if="dateValue"
+            :date-range="dateValue"
+            :employee-id="selectedEmployeeId"
+          />
+        </div>
+        <div v-if="activeTab === 'penjualan'">
+          <SalesReport
+  :date-range="dateValue"
+  :outlet-id="selectedOutletId"
+/>
+  </div>
       </div>
     </div>
-
-    <div class="stats stats-vertical lg:stats-horizontal shadow w-full">
-      <div class="stat">
-        <div class="stat-title">Total Omzet</div>
-        <div class="stat-value text-success">{{ formatRupiah(summary.totalOmzet) }}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">Total Profit</div>
-        <div class="stat-value text-info">{{ formatRupiah(summary.totalProfit) }}</div>
-        <div class="stat-desc">Berdasarkan harga modal</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">Jumlah Transaksi</div>
-        <div class="stat-value">{{ summary.transactionCount }}</div>
-      </div>
-    </div>
-
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h2 class="card-title">Rincian Transaksi</h2>
-        <div v-if="loading" class="text-center p-8">
-          <span class="loading loading-spinner loading-lg"></span>
-        </div>
-        <div v-else class="overflow-x-auto">
-          <table class="table table-sm w-full">
-            <thead>
-              <tr>
-                <th>Waktu</th>
-                <th>ID Struk</th>
-                <th>Pelanggan</th>
-                <th class="text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="sale in salesData" :key="sale.id" class="hover">
-                <td>{{ new Date(sale.created_at).toLocaleString('id-ID') }}</td>
-                <td>#{{ sale.id }}</td>
-                <td>{{ sale.customer_name || '-' }}</td>
-                <td class="text-right font-medium">{{ formatRupiah(sale.total) }}</td>
-              </tr>
-              <tr v-if="salesData.length === 0">
-                <td colspan="4" class="text-center py-4">Tidak ada data penjualan pada periode ini.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
   </div>
 </template>
+
+<script setup>
+// =======================================================
+// === BAGIAN SCRIPT YANG DISESUAIKAN ===
+// =======================================================
+import { ref, onMounted, computed } from 'vue';
+// Import library baru dan CSS-nya
+import Datepicker from '@vuepic/vue-datepicker';
+import '@vuepic/vue-datepicker/dist/main.css';
+
+// Import lain (TIDAK BERUBAH)
+import { supabase } from '@/supabase';
+import { useUserStoreRefactored } from '@/stores/userStoreRefactored';
+import AttendanceReport from '@/components/reports/AttendanceReport.vue';
+import SalesReport from '@/components/reports/SalesReport.vue';
+
+const userStore = useUserStoreRefactored();
+
+// State Filter (TIDAK BERUBAH)
+const activeTab = ref('absensi');
+const selectedOutletId = ref(null);
+const selectedEmployeeId = ref(null);
+const employeeList = ref([]);
+
+// State untuk Datepicker BARU
+const today = new Date();
+const sevenDaysAgo = new Date();
+sevenDaysAgo.setDate(today.getDate() - 6);
+
+// Library ini menggunakan format array: [startDate, endDate]
+const dateValue = ref([sevenDaysAgo, today]);
+
+// Menambahkan preset tanggal yang praktis
+const presetRanges = ref([
+  { label: 'Hari Ini', range: [new Date(), new Date()] },
+  { label: 'Kemarin', range: [new Date(new Date().setDate(new Date().getDate() - 1)), new Date(new Date().setDate(new Date().getDate() - 1))] },
+  { label: '7 Hari Terakhir', range: [new Date(new Date().setDate(new Date().getDate() - 6)), new Date()] },
+  { label: 'Bulan Ini', range: [new Date(today.getFullYear(), today.getMonth(), 1), new Date(today.getFullYear(), today.getMonth() + 1, 0)] },
+]);
+
+// Helper untuk styling datepicker sesuai tema DaisyUI
+const isDarkMode = computed(() => {
+  if (typeof window !== 'undefined') {
+    const theme = document.documentElement.getAttribute('data-theme');
+    // Tambahkan nama-nama tema gelap Anda di sini
+    return ['dark', 'night', 'coffee', 'synthwave'].includes(theme);
+  }
+  return false;
+});
+
+// Fungsi untuk mengambil daftar pegawai (TIDAK BERUBAH)
+async function fetchEmployeeList() {
+    if (!userStore.businessId) return;
+    try {
+        const ownerRoleId = userStore.profile?.role_id;
+        if (!ownerRoleId) return;
+        
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('business_id', userStore.businessId)
+            .neq('role_id', ownerRoleId); 
+            
+        if (error) throw error;
+        employeeList.value = data || [];
+    } catch(e) {
+        console.error("Gagal mengambil daftar pegawai untuk filter:", e);
+    }
+}
+
+// onMounted (TIDAK BERUBAH)
+onMounted(() => {
+  fetchEmployeeList();
+});
+</script>
+
+<style>
+/* Kustomisasi kecil agar datepicker terlihat lebih menyatu dengan DaisyUI */
+.dp__input {
+  border-color: hsl(var(--b2, var(--bc))); /* Warna border dari DaisyUI */
+  border-radius: var(--rounded-btn, 0.5rem);
+}
+.dp__input:hover {
+  border-color: hsl(var(--b3));
+}
+.dp__input_readonly {
+  background-color: hsl(var(--b1));
+}
+</style>

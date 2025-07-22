@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { supabase } from '@/supabase';
-import { useUserStoreRefactored } from './userStoreRefactored';
+import { useUserStoreRefactored, useUIStore } from './userStoreRefactored';
 import { useCartStore } from './cartStore';
 
 export const useTransactionStore = defineStore('transaction', {
@@ -14,6 +14,7 @@ export const useTransactionStore = defineStore('transaction', {
       const cartStore = useCartStore();
 
       try {
+        console.log("Data diterima oleh submitTransaction:", paymentDetails);
         // 1. Siapkan data untuk tabel `transactions`
         const transactionData = {
           business_id: userStore.businessId,
@@ -29,7 +30,10 @@ export const useTransactionStore = defineStore('transaction', {
           // Ini lebih konsisten untuk data.
           customer_name: paymentDetails.customer_name || null,
           customer_phone: paymentDetails.customer_phone || null,
+          amount_paid: paymentDetails.amount_paid,
+          change: paymentDetails.change,
         };
+        console.log("Data yang akan di-INSERT ke Supabase:", transactionData);
 
         // 2. Simpan "kepala" transaksi dan dapatkan ID-nya
         const { data: newTransaction, error: transactionError } = await supabase
@@ -59,12 +63,22 @@ export const useTransactionStore = defineStore('transaction', {
 
         // 5. Potong stok (ini bagian yang kompleks, kita bisa gunakan RPC nanti)
         for (const item of cartStore.items) {
-          await supabase.rpc('update_stock_on_sale', {
-              p_id: item.has_variants ? item.product_id : item.id,
-              v_id: item.has_variants ? item.id : null,
-              o_id: userStore.activeOutletId,
-              sale_qty: item.quantity
+          // Panggil RPC baru dengan nama baru dan parameter tambahan
+          const { error: stockError } = await supabase.rpc('process_stock_deduction_on_sale', {
+            p_product_id: item.has_variants ? item.product_id : item.id,
+            p_variant_id: item.has_variants ? item.id : null,
+            p_outlet_id: userStore.activeOutletId,
+            p_sale_qty: item.quantity,
+            p_transaction_id: newTransaction.id // <-- KIRIM ID TRANSAKSI DARI LANGKAH SEBELUMNYA
           });
+        
+          if (stockError) {
+            // Tambahkan penanganan error jika pemotongan stok gagal
+            console.error(`Gagal memotong stok untuk item ${item.name}:`, stockError);
+            // Anda mungkin ingin menampilkan notifikasi error di sini juga
+            uiStore.showNotification(`Gagal update stok untuk ${item.name}.`, 'error');
+            // Mungkin Anda ingin menghentikan proses? Tergantung kebijakan bisnis Anda.
+          }
         }
         
         // 6. Jika semua berhasil, bersihkan keranjang
@@ -79,5 +93,7 @@ export const useTransactionStore = defineStore('transaction', {
         this.isSubmitting = false;
       }
     },
+
+
   },
 });

@@ -161,6 +161,35 @@ CREATE TABLE public.ingredient_stock_movements (
     created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
+CREATE TABLE public.product_stock_movements (
+    id BIGSERIAL PRIMARY KEY,
+    
+    -- Kolom untuk mengidentifikasi item mana yang bergerak.
+    -- Hanya salah satu dari product_id atau variant_id yang akan diisi.
+    product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
+    variant_id UUID REFERENCES public.product_variants(id) ON DELETE SET NULL,
+    
+    -- Konteks lokasi, sama seperti di tabel riwayat bahan baku Anda.
+    outlet_id UUID NOT NULL REFERENCES public.outlets(id) ON DELETE CASCADE,
+    
+    -- Kolom-kolom deskriptif, meniru struktur tabel riwayat Anda yang sudah ada.
+    movement_type VARCHAR(50) NOT NULL, -- Contoh: 'penjualan', 'stok_masuk', 'penyesuaian'
+    quantity_change INT NOT NULL, -- Nilai negatif untuk stok keluar, positif untuk masuk
+    ref_text TEXT, -- Mirip dengan kolom 'ref' Anda, untuk referensi ID Transaksi dll.
+    
+    -- Kolom audit
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    -- Constraint untuk memastikan data valid: setidaknya satu ID produk/varian harus diisi, tapi tidak keduanya.
+    CONSTRAINT product_or_variant_must_be_filled CHECK (
+        (product_id IS NOT NULL AND variant_id IS NULL) OR
+        (product_id IS NULL AND variant_id IS NOT NULL)
+    )
+);
+
+COMMENT ON TABLE public.product_stock_movements IS 'Mencatat semua pergerakan stok untuk produk jadi (simpel dan bervarian). Melengkapi tabel ingredient_stock_movements.';
+COMMENT ON COLUMN public.product_stock_movements.ref_text IS 'Untuk referensi seperti ID transaksi, nomor PO, atau catatan manual.';
+
 -- Perintah 1: Menambahkan harga modal untuk produk simpel per outlet
 -- Disimpan dalam bentuk INTEGER (satuan sen/rupiah terkecil) untuk presisi
 ALTER TABLE public.product_outlets

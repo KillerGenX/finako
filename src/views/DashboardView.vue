@@ -99,6 +99,29 @@
             <p class="text-3xl font-extrabold">Rp {{ Math.round(dashboardData.daily_summary.avg_per_transaction).toLocaleString('id-ID') }}</p>
           </div>
         </div>
+        <div v-if="userStore.activeRole !== 'Owner'" class="card bg-base-100 " :class="attendanceStore.currentStatus === 'CLOCKED_IN' ? 'border-success' : 'border-error'">
+      <div class="card-body justify-center items-center">
+        <div class="text-center">
+          <h3 class="card-title text-sm font-normal">Status Absensi</h3>
+          <p class="font-bold text-xl mt-1">
+            {{ attendanceStore.currentStatus === 'CLOCKED_IN' ? 'SEDANG BEKERJA' : 'TIDAK BEKERJA' }}
+          </p>
+        </div>
+        <div class="card-actions mt-4">
+           <!-- Tombol ini akan mengarahkan ke halaman Absensi -->
+           <button 
+             @click="router.push('/absensi')" 
+             class="btn"
+             :class="{ 
+               'btn-primary': attendanceStore.currentStatus === 'CLOCKED_OUT',
+               'btn-secondary': attendanceStore.currentStatus === 'CLOCKED_IN'
+             }"
+           >
+             {{ attendanceStore.currentStatus === 'CLOCKED_OUT' ? 'Lakukan Clock In' : 'Lakukan Clock Out' }}
+           </button>
+        </div>
+      </div>
+    </div>
       </div>
       
       <!-- Wawasan Tambahan -->
@@ -155,10 +178,12 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
 import { useUserStoreRefactored } from '@/stores/userStoreRefactored';
 import { supabase } from '@/supabase';
 import SalesChart from '@/components/SalesChart.vue';
+import { useAttendanceStore } from '@/stores/attendanceStore';
+import { useRouter } from 'vue-router';
 
 const chartData = computed(() => {
   const emptyChart = { labels: [], datasets: [{ data: [] }] };
@@ -228,11 +253,18 @@ const chartOptions = ref({
 });
 
 const userStore = useUserStoreRefactored();
+const attendanceStore = useAttendanceStore(); // <-- 3. INISIALISASI STORE BARU
+const router = useRouter(); // <-- 4. INISIALISASI ROUTER
 
 const dashboardData = ref(null);
 const isLoading = ref(false);
 const error = ref(null);
 
+onMounted(() => {
+  if (userStore.activeRole !== 'Owner') {
+    attendanceStore.fetchMyLastStatus();
+  }
+});
 // === FUNGSI PERHITUNGAN YANG SUDAH LENGKAP ===
 function processRawData(rawData) {
     if (!rawData || !rawData.todays_transactions) {
