@@ -22,6 +22,14 @@ export const useReportStore = defineStore('report', () => {
     error: null,
   });
 
+  const stockCardReport = ref({
+    data: [],
+    initialStockSnapshot: 0,
+    loading: false,
+    error: null,
+  });
+
+
   // State untuk laporan lain di masa depan
   // const salesReport = ref({ ... });
 
@@ -114,10 +122,40 @@ export const useReportStore = defineStore('report', () => {
     }
   }
 
+  async function fetchStockCardReport(filters) {
+    stockCardReport.value.loading = true;
+    stockCardReport.value.error = null;
+    stockCardReport.value.data = [];
+  
+    try {
+      const { data, error } = await supabase.rpc('get_stock_card_report', {
+          p_start_date: new Date(filters.startDate).toISOString(),
+          p_end_date: new Date(filters.endDate).toISOString(),
+          p_item_type: filters.itemType,
+          p_item_id: filters.itemId,
+          p_initial_stock: filters.initialStock // Kirim stok awal ke RPC
+      });
+      
+      if (error) throw error;
+      
+      // Tidak perlu proses apa-apa lagi! Langsung simpan.
+      stockCardReport.value.data = data || [];
+  
+    } catch (e) {
+      stockCardReport.value.error = e.message;
+      console.error("Gagal mengambil kartu stok:", e);
+    } finally {
+      stockCardReport.value.loading = false;
+    }
+  }
+
+
   return {
     attendanceReport,
     salesReport,
+    stockCardReport,
     fetchAttendanceReport,
     fetchSalesReport,
+    fetchStockCardReport,
   };
 });

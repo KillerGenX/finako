@@ -50,7 +50,7 @@ function hideTooltip() {
   >
     <div class="h-16 flex items-center justify-center p-4">
       <RouterLink to="/" class="min-w-max flex items-center gap-2">
-        <img src="/finako.svg" alt="Finako Logo" class="h-20 w-15" />
+        <img src="/finako.svg" alt="Finako Logo" class="h-20 w-12" />
       </RouterLink>
     </div>
 

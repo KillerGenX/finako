@@ -64,6 +64,9 @@
         <a role="tab" class="tab" @click="activeTab = 'penjualan'" :class="{'tab-active': activeTab === 'penjualan'}">
           Laporan Penjualan
         </a>
+        <a role="tab" class="tab" :class="{'tab-active': activeTab === 'stok'}" @click="activeTab = 'stok'">
+    Kartu Stok
+  </a>
       </div>
 
       <!-- ===== KONTEN LAPORAN (PENYESUAIAN KECIL PADA PROPS) ===== -->
@@ -82,6 +85,14 @@
   :outlet-id="selectedOutletId"
 />
   </div>
+  <div v-if="activeTab === 'stok'">
+      <StockCardReport
+        :start-date="dateValue[0]"
+        :end-date="dateValue[1]"
+      />
+    </div>
+
+
       </div>
     </div>
   </div>
@@ -101,6 +112,7 @@ import { supabase } from '@/supabase';
 import { useUserStoreRefactored } from '@/stores/userStoreRefactored';
 import AttendanceReport from '@/components/reports/AttendanceReport.vue';
 import SalesReport from '@/components/reports/SalesReport.vue';
+import StockCardReport from '@/components/reports/StockCardReport.vue';
 
 const userStore = useUserStoreRefactored();
 

@@ -35,7 +35,7 @@ export const useStockStore = defineStore('stock', () => {
       const [ingredientsRes, ingredientStocksRes, movementsRes] = await Promise.all([
         supabase.from('ingredients').select('*').eq('business_id', userStore.businessId).order('name'),
         supabase.from('ingredient_outlets').select('*, outlets!inner(business_id)').eq('outlets.business_id', userStore.businessId),
-        supabase.from('ingredient_stock_movements').select('*, ingredients(name)').in('outlet_id', outletIds).order('created_at', { ascending: false }).limit(100),
+        supabase.from('ingredient_stock_movements').select('*, ingredients(name)').in('outlet_id', outletIds).order('created_at', { ascending: false }).limit(10),
       ]);
       
       if (ingredientsRes.error) throw ingredientsRes.error;
@@ -160,36 +160,43 @@ export const useStockStore = defineStore('stock', () => {
   async function addStockMovement(movementData) {
     isLoading.value = true;
     try {
-      // 1. Ambil data stok saat ini (logika ini sudah benar)
+      // 1. Ambil stok saat ini
       const { data: currentStock, error: stockError } = await supabase
         .from('ingredient_outlets')
         .select('id, stock_quantity')
         .eq('ingredient_id', movementData.ingredient_id)
         .eq('outlet_id', movementData.outlet_id)
-        .maybeSingle(); // Menggunakan maybeSingle lebih aman
-
+        .maybeSingle();
+  
       if (stockError) throw stockError;
       
       let newStockQuantity = parseFloat(currentStock?.stock_quantity || 0);
-      const movementQuantity = parseFloat(movementData.quantity);
-
-      // 2. Hitung jumlah stok baru (logika ini sudah benar)
+      const typedQuantity = parseFloat(movementData.quantity); // Angka yg diketik user
+      
+      // ============================================
+      // === LOGIKA BARU UNTUK KONSISTENSI DATA ===
+      // ============================================
+      let quantityChange = 0; // Variabel untuk menyimpan perubahan (+/-)
+  
       if (movementData.movement_type === 'masuk') {
-        newStockQuantity += movementQuantity;
+        quantityChange = Math.abs(typedQuantity); // Pastikan positif
+        newStockQuantity += quantityChange;
       } else if (movementData.movement_type === 'keluar') {
-        newStockQuantity -= movementQuantity;
+        quantityChange = -Math.abs(typedQuantity); // PASTIKAN NEGATIF
+        newStockQuantity += quantityChange; // Penjumlahan dengan angka negatif akan mengurangi
       } else if (movementData.movement_type === 'penyesuaian') {
-        newStockQuantity = movementQuantity;
+        quantityChange = typedQuantity - newStockQuantity; // Perubahannya adalah selisih
+        newStockQuantity = typedQuantity;
       }
       
       if (newStockQuantity < 0) newStockQuantity = 0;
-
-      // 3. Siapkan payload TANPA business_id yang tidak perlu
+  
+      // 3. Siapkan payload dengan data yang sudah konsisten
       const movementPayload = {
         ingredient_id: movementData.ingredient_id,
         outlet_id: movementData.outlet_id,
         movement_type: movementData.movement_type,
-        quantity: movementData.quantity,
+        quantity: quantityChange, // <-- SIMPAN PERUBAHANNYA (+/-), BUKAN INPUT ASLI
         ref: movementData.ref,
       };
       
@@ -198,7 +205,7 @@ export const useStockStore = defineStore('stock', () => {
         outlet_id: movementData.outlet_id,
         stock_quantity: newStockQuantity,
       };
-
+  
       // 4. Jalankan perintah ke database
       const [movementResult, stockResult] = await Promise.all([
         supabase.from('ingredient_stock_movements').insert(movementPayload),
@@ -207,12 +214,12 @@ export const useStockStore = defineStore('stock', () => {
       
       if (movementResult.error) throw movementResult.error;
       if (stockResult.error) throw stockResult.error;
-
+  
       // 5. Refresh data
       await fetchStockPageData();
       uiStore.showNotification('Mutasi stok berhasil dicatat!', 'success');
       return true;
-
+  
     } catch (e) {
       console.error(e);
       uiStore.showNotification(`Error: ${e.message}`, 'error');
