@@ -1,59 +1,51 @@
 <template>
-  <!-- Kita gunakan v-if, bukan v-show, agar state-nya fresh setiap kali dibuka -->
   <div v-if="show" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]">
-    <div class="bg-base-100 p-6 rounded-lg shadow-xl w-full max-w-2xl">
-      <h3 class="text-xl font-bold mb-4">Kelola Varian Produk</h3>
+    <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl">
+      <h3 class="text-xl font-bold text-gray-800">Kelola Varian Produk</h3>
+      <p class="text-sm text-gray-500 mb-4">Tambah atau edit varian untuk produk ini.</p>
       
-      <!-- Form untuk menambah atau mengedit varian -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-2 items-end mb-4 p-4 bg-base-200 rounded-lg">
+      <!-- Form input dengan gaya baru -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end mb-4 p-4 bg-gray-50 rounded-lg border">
         <div class="form-control">
-          <label class="label-text">Nama Varian</label>
-          <input v-model="variantForm.name" placeholder="Contoh: Panas" class="input input-sm input-bordered w-full" />
+          <label class="label-text text-xs font-medium">Nama Varian</label>
+          <input v-model="variantForm.name" placeholder="Contoh: Panas" class="input input-sm input-bordered w-full mt-1" />
         </div>
         <div class="form-control">
-          <label class="label-text">Harga</label>
-          <input v-model.number="variantForm.price" type="number" min="0" placeholder="Rp" class="input input-sm input-bordered w-full" />
+          <label class="label-text text-xs font-medium">Harga</label>
+          <input v-model.number="variantForm.price" type="number" min="0" placeholder="Rp" class="input input-sm input-bordered w-full mt-1" />
         </div>
         <div class="form-control">
-          <label class="label-text">SKU (Opsional)</label>
-          <input v-model.trim="variantForm.sku" placeholder="SKU Varian" class="input input-sm input-bordered w-full" />
+          <label class="label-text text-xs font-medium">SKU (Opsional)</label>
+          <input v-model.trim="variantForm.sku" placeholder="SKU Varian" class="input input-sm input-bordered w-full mt-1" />
         </div>
-        <div class="form-control">
-          <button @click="addOrUpdateVariant" class="btn btn-sm btn-primary w-full">{{ editingIndex === null ? 'Tambah' : 'Update' }}</button>
-          <button v-if="editingIndex !== null" @click="cancelEdit" class="btn btn-sm btn-ghost mt-1">Batal</button>
+        <div class="form-control flex flex-col gap-1">
+          <button @click="addOrUpdateVariant" class="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white border-none w-full">{{ editingIndex === null ? 'Tambah' : 'Update' }}</button>
+          <button v-if="editingIndex !== null" @click="cancelEdit" class="btn btn-sm btn-ghost w-full">Batal</button>
         </div>
       </div>
 
-      <!-- Tabel daftar varian yang sudah ada -->
-      <div class="max-h-60 overflow-y-auto">
-        <table class="table table-compact w-full">
-          <thead>
-            <tr>
-              <th>Nama</th>
-              <th>Harga</th>
-              <th>SKU</th>
-              <th class="w-24">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(variant, index) in localVariants" :key="index">
-              <td>{{ variant.name }}</td>
-              <td>{{ formatCurrency(variant.price) }}</td>
-              <td>{{ variant.sku || '-' }}</td>
-              <td>
-                <button @click="editVariant(index)" class="btn btn-ghost btn-xs">Edit</button>
-                <button @click="deleteVariant(index)" class="btn btn-ghost btn-xs text-error">Hapus</button>
-              </td>
-            </tr>
-            <tr v-if="localVariants.length === 0">
-              <td colspan="4" class="text-center text-gray-400 py-4">Belum ada varian ditambahkan.</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Daftar varian dengan gaya kartu -->
+      <div class="max-h-60 overflow-y-auto space-y-2 p-1">
+        <div v-if="localVariants.length === 0" class="text-center text-gray-400 py-8">
+            <p>Belum ada varian ditambahkan.</p>
+        </div>
+        <div v-for="(variant, index) in localVariants" :key="index" class="flex items-center justify-between p-3 rounded-lg border" :class="{'bg-yellow-50 border-yellow-300': editingIndex === index}">
+            <div>
+                <p class="font-semibold text-gray-800">{{ variant.name }}</p>
+                <p class="text-xs text-gray-500">SKU: {{ variant.sku || '-' }}</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <p class="font-bold text-teal-600">{{ formatCurrency(variant.price) }}</p>
+                <div class="flex gap-1">
+                    <button @click="editVariant(index)" class="btn btn-xs btn-ghost text-gray-500">Edit</button>
+                    <button @click="deleteVariant(index)" class="btn btn-xs btn-ghost text-red-500">Hapus</button>
+                </div>
+            </div>
+        </div>
       </div>
 
       <!-- Tombol Selesai -->
-      <div class="flex justify-end mt-6">
+      <div class="flex justify-end mt-6 pt-4 border-t">
         <button class="btn" @click="done">Selesai</button>
       </div>
     </div>
@@ -61,23 +53,21 @@
 </template>
 
 <script setup>
+// SCRIPT TIDAK DIUBAH SAMA SEKALI
 import { ref, watch } from 'vue';
 
 const props = defineProps({
   show: Boolean,
-  variants: Array, // Menerima daftar varian dari komponen induk
+  variants: Array,
 });
 
 const emit = defineEmits(['close', 'update:variants']);
 
-// State lokal untuk modal ini
 const localVariants = ref([]);
 const variantForm = ref({ name: '', price: 0, sku: '' });
 const editingIndex = ref(null);
 
-// Awasi perubahan dari luar dan update state lokal
 watch(() => props.variants, (newVal) => {
-  // Buat salinan agar tidak mengubah data induk secara langsung
   localVariants.value = JSON.parse(JSON.stringify(newVal || []));
 }, { immediate: true, deep: true });
 
@@ -97,10 +87,8 @@ function addOrUpdateVariant() {
     return;
   }
   if (editingIndex.value !== null) {
-    // Update
     localVariants.value[editingIndex.value] = { ...variantForm.value };
   } else {
-    // Add
     localVariants.value.push({ ...variantForm.value });
   }
   resetForm();
@@ -122,7 +110,6 @@ function deleteVariant(index) {
 }
 
 function done() {
-  // Kirim data varian yang sudah diupdate kembali ke induk
   emit('update:variants', localVariants.value);
   emit('close');
 }

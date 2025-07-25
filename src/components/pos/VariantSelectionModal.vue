@@ -1,25 +1,42 @@
 <template>
-    <dialog class="modal" :class="{ 'modal-open': show }">
+    <dialog class="modal" :class="{ 'modal-open': show }" @close="emit('close')">
       <div class="modal-box">
-        <h3 class="font-bold text-lg">Pilih Varian untuk {{ product?.name }}</h3>
         <button @click="emit('close')" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+        <h3 class="font-bold text-lg text-gray-800">Pilih Varian untuk {{ product?.name }}</h3>
         
         <div class="py-4 space-y-2">
-          <p v-if="variantsWithDetails.length === 0" class="text-gray-500">Tidak ada varian yang tersedia untuk outlet ini.</p>
+          <p v-if="variantsWithDetails.length === 0" class="text-gray-500 text-center py-8">
+            Tidak ada varian yang tersedia untuk outlet ini.
+          </p>
           
           <div 
             v-for="variant in variantsWithDetails" 
             :key="variant.id"
             @click="selectVariant(variant)"
-            class="p-4 border rounded-lg flex justify-between items-center cursor-pointer hover:border-primary hover:bg-primary-content"
-            :class="{ 'opacity-50 cursor-not-allowed': variant.stock <= 0 }"
+            class="p-4 border rounded-lg flex justify-between items-center transition-all duration-200"
+            :class="{ 
+              'opacity-50 cursor-not-allowed bg-gray-100': variant.stock <= 0,
+              'cursor-pointer hover:border-teal-500 hover:bg-teal-50': variant.stock > 0
+            }"
           >
             <div>
-              <p class="font-semibold">{{ variant.name }}</p>
-              <p class="text-sm text-gray-500">Stok: {{ variant.stock }}</p>
+              <p class="font-semibold text-gray-800">{{ variant.name }}</p>
+              <p 
+                class="text-sm font-medium"
+                :class="{
+                  'text-green-600': variant.stock > 5,
+                  'text-yellow-600': variant.stock > 0 && variant.stock <= 5,
+                  'text-red-600': variant.stock <= 0,
+                }"
+              >
+                Stok: {{ variant.stock > 0 ? variant.stock : 'Habis' }}
+              </p>
             </div>
-            <p class="font-bold text-primary">{{ formatCurrency(variant.price) }}</p>
+            <p class="font-bold text-lg text-teal-600">{{ formatCurrency(variant.price) }}</p>
           </div>
+        </div>
+        <div class="modal-action">
+            <button @click="emit('close')" class="btn">Tutup</button>
         </div>
       </div>
     </dialog>
@@ -30,13 +47,12 @@
   
   const props = defineProps({
     show: Boolean,
-    product: Object, // Produk master yang punya varian
+    product: Object,
     activeOutletId: String,
   });
   
   const emit = defineEmits(['close', 'variant-selected']);
   
-  // Olah data varian untuk mendapatkan harga & stok di outlet aktif
   const variantsWithDetails = computed(() => {
     if (!props.product?.product_variants || !props.activeOutletId) return [];
     
@@ -45,8 +61,8 @@
         pvo => pvo.outlet_id === props.activeOutletId
       );
       return {
-        ...variant, // data asli varian (id, name, dll)
-        product_name: props.product.name, // bawa nama produk masternya
+        ...variant,
+        product_name: props.product.name,
         price: outletInfo?.price ?? 0,
         stock: outletInfo?.stock_quantity ?? 0,
       };
@@ -55,7 +71,6 @@
   
   function selectVariant(variant) {
     if (variant.stock <= 0) {
-      // Bisa tambahkan notifikasi di sini
       return;
     }
     emit('variant-selected', variant);
@@ -66,3 +81,4 @@
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
   }
   </script>
+  

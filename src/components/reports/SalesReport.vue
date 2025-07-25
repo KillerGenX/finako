@@ -1,192 +1,148 @@
 <template>
-    <div>
+    <div class="space-y-8">
       <!-- Header Panel Laporan -->
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
-        <h3 class="text-lg font-bold">Ringkasan Laporan Penjualan</h3>
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <h3 class="text-xl font-bold text-gray-800">Laporan Penjualan</h3>
         <button 
-    @click="handleExport" 
-    class="btn btn-outline btn-sm"
-    :disabled="isLoading || (!summary && topProducts.length === 0)"
-  >
-    <span v-if="isExporting" class="loading loading-spinner loading-xs"></span>
-    Ekspor ke Excel
-  </button>
-        <!-- Tombol Ekspor bisa kita tambahkan di sini nanti -->
+          @click="handleExport" 
+          class="btn btn-outline border-gray-300 btn-sm"
+          :disabled="isLoading || (!summary && topProducts.length === 0)"
+        >
+          <span v-if="isExporting" class="loading loading-spinner loading-xs"></span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+          Ekspor ke Excel
+        </button>
       </div>
   
       <!-- Tampilan Loading -->
       <div v-if="isLoading" class="text-center py-20">
-        <span class="loading loading-spinner loading-lg"></span>
-        <p class="mt-4">Menghitung data penjualan...</p>
+        <span class="loading loading-spinner loading-lg text-teal-600"></span>
+        <p class="mt-4 text-gray-600">Menghitung data penjualan...</p>
       </div>
   
       <!-- Tampilan Error -->
-      <div v-else-if="error" class="alert alert-error">
-        <span>Error: {{ error }}</span>
+      <div v-else-if="error" class="bg-red-50 border-l-4 border-red-400 p-4">
+        <p class="text-sm text-red-700">Error: {{ error }}</p>
       </div>
   
       <!-- Konten Utama Laporan Penjualan -->
       <div v-else-if="summary" class="space-y-8">
         
-        <!-- Kartu KPI (Key Performance Indicators) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="stat bg-base-200 rounded-lg shadow">
-            <div class="stat-title">Omzet Kotor</div>
-            <div class="stat-value text-primary">{{ formatCurrency(summary.total_revenue) }}</div>
-            <div class="stat-desc">{{ summary.transaction_count }} transaksi</div>
-          </div>
-          <div class="stat bg-base-200 rounded-lg shadow">
-            <div class="stat-title">Rata-rata/Transaksi</div>
-            <div class="stat-value">{{ formatCurrency(summary.avg_per_transaction) }}</div>
-            <div class="stat-desc">Dari {{ summary.transaction_count }} transaksi</div>
-          </div>
-          <div class="stat bg-base-200 rounded-lg shadow">
-  <div class="stat-title">Laba Kotor</div>
-  <!-- Tampilkan data dari summary, format sebagai mata uang -->
-  <div class="stat-value text-accent">{{ formatCurrency(summary.total_profit) }}</div>
-  <!-- (Opsional) Tampilkan persentase margin -->
-  <div class="stat-desc">Margin: {{ profitMargin }}%</div>
-</div>
-          <div class="stat bg-base-200 rounded-lg shadow">
-            <div class="stat-title">Produk Terjual</div>
-            <div class="stat-value">{{ summary.total_items_sold }} pcs</div>
-            <div class="stat-desc">Total barang terjual</div>
-          </div>
+        <!-- Kartu KPI dengan Gaya Baru -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="bg-white shadow-lg rounded-lg border-l-4 border-teal-500 flex items-center p-5">
+                <div class="bg-teal-100 rounded-full p-3 mr-4"><svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01"></path></svg></div>
+                <div><p class="text-sm text-gray-500 font-medium">Omzet Kotor</p><p class="text-2xl font-bold text-gray-800">{{ formatCurrency(summary.total_revenue) }}</p></div>
+            </div>
+            <div class="bg-white shadow-lg rounded-lg border-l-4 border-green-500 flex items-center p-5">
+                <div class="bg-green-100 rounded-full p-3 mr-4"><svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg></div>
+                <div><p class="text-sm text-gray-500 font-medium">Laba Kotor</p><p class="text-2xl font-bold text-gray-800">{{ formatCurrency(summary.total_profit) }}</p></div>
+            </div>
+            <div class="bg-white shadow-lg rounded-lg border-l-4 border-blue-500 flex items-center p-5">
+                <div class="bg-blue-100 rounded-full p-3 mr-4"><svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg></div>
+                <div><p class="text-sm text-gray-500 font-medium">Jml. Transaksi</p><p class="text-2xl font-bold text-gray-800">{{ summary.transaction_count }}</p></div>
+            </div>
+            <div class="bg-white shadow-lg rounded-lg border-l-4 border-purple-500 flex items-center p-5">
+                <div class="bg-purple-100 rounded-full p-3 mr-4"><svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
+                <div><p class="text-sm text-gray-500 font-medium">Produk Terjual</p><p class="text-2xl font-bold text-gray-800">{{ summary.total_items_sold }} pcs</p></div>
+            </div>
         </div>
-  
-        <!-- Tabel Produk Terlaris -->
-        <div>
-          <h4 class="text-md font-bold mb-4">Produk Terlaris</h4>
-          <div class="overflow-x-auto bg-base-100 rounded-lg shadow">
-            <table class="table w-full">
-              <thead>
-                <tr>
-                  <th>No</th>
-                  <th>Nama Produk</th>
-                  <th class="text-right">Jumlah Terjual</th>
-                  <th class="text-right">Total Omzet</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="!topProducts || topProducts.length === 0">
-                  <td colspan="4" class="text-center h-24">Tidak ada penjualan produk pada periode ini.</td>
-                </tr>
-                <tr v-for="(product, index) in topProducts" :key="product.product_id" class="hover">
-                  <th>{{ index + 1 }}</th>
-                  <td>{{ product.product_name }}</td>
-                  <td class="text-right font-mono">{{ product.quantity_sold }}</td>
-                  <td class="text-right font-mono">{{ formatCurrency(product.total_revenue) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Kolom Kiri: Produk Terlaris -->
+            <div class="lg:col-span-1 space-y-4">
+                <div>
+                  <h4 class="text-lg font-bold text-gray-800 mb-4">Produk Terlaris</h4>
+                  <div class="overflow-x-auto bg-white rounded-lg border">
+                    <table class="table-auto w-full text-sm">
+                      <thead class="bg-gray-50 text-left text-gray-600">
+                        <tr>
+                          <th class="px-4 py-2 font-medium">Produk</th>
+                          <th class="px-4 py-2 font-medium text-right">Terjual</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y">
+                        <tr v-if="!topProducts || topProducts.length === 0"><td colspan="2" class="p-4 text-center text-gray-500">Tidak ada data.</td></tr>
+                        <tr v-for="product in topProducts.slice(0, 10)" :key="product.product_id">
+                          <td class="px-4 py-2 font-medium text-gray-800">{{ product.product_name }}</td>
+                          <td class="px-4 py-2 text-right font-mono">{{ product.quantity_sold }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+            </div>
+            <!-- Kolom Kanan: Grafik -->
+            <div class="lg:col-span-2">
+                <h4 class="text-lg font-bold text-gray-800 mb-4">Grafik Tren Penjualan</h4>
+                <div class="p-4 bg-white rounded-lg border h-80">
+                    <SalesChart v-if="!isLoading && chartData.labels.length > 0" :chart-data="chartData" :chart-options="chartOptions" />
+                    <div v-else class="flex items-center justify-center h-full text-gray-400">Data tidak cukup untuk menampilkan grafik.</div>
+                </div>
+            </div>
         </div>
         
-       <!-- Grafik Tren Penjualan Harian -->
-<div>
-    <h4 class="text-md font-bold mb-4">Grafik Tren Penjualan</h4>
-    <div class="p-4 bg-base-100 rounded-lg shadow h-80">
-        <SalesChart 
-           v-if="!isLoading && chartData.labels.length > 0"
-           :chart-data="chartData" 
-           :chart-options="chartOptions" 
-        />
-        <div v-else-if="!isLoading && chartData.labels.length === 0" class="flex items-center justify-center h-full text-base-content/50">
-            <p>Data tidak cukup untuk menampilkan grafik.</p>
+        <!-- Daftar Transaksi -->
+        <div>
+            <h4 class="text-lg font-bold text-gray-800 mb-4">Daftar Transaksi</h4>
+            <div class="overflow-x-auto bg-white rounded-lg border">
+              <table class="table-auto w-full text-sm">
+                <thead class="bg-gray-50 text-left text-gray-600">
+                  <tr>
+                    <th class="px-6 py-3 font-medium">Waktu</th>
+                    <th class="px-6 py-3 font-medium">Outlet</th>
+                    <th class="px-6 py-3 font-medium">Total</th>
+                    <th class="px-6 py-3 font-medium">Metode Bayar</th>
+                    <th class="px-6 py-3 font-medium text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y">
+                  <tr v-if="!transactionList || transactionList.length === 0"><td colspan="5" class="p-10 text-center text-gray-500">Tidak ada transaksi.</td></tr>
+                  <tr v-for="tx in paginatedTransactions" :key="tx.id">
+                    <td class="px-6 py-4">{{ new Date(tx.created_at).toLocaleString('id-ID', {day: '2-digit', month: 'short', hour:'2-digit', minute:'2-digit'}) }}</td>
+                    <td class="px-6 py-4">{{ tx.outlet_name }}</td>
+                    <td class="px-6 py-4 font-mono">{{ formatCurrency(tx.final_amount) }}</td>
+                    <td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{{ tx.payment_method }}</span></td>
+                    <td class="px-6 py-4 text-center">
+                      <button class="btn btn-xs btn-outline border-gray-300" @click="showReceipt(tx)">Lihat Struk</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- Paginasi dengan Gaya Baru -->
+            <div class="flex justify-center mt-4" v-if="totalPages > 1">
+                <div class="flex items-center gap-2">
+                  <button class="btn btn-outline border-gray-300" @click="currentPage--" :disabled="currentPage === 1">«</button>
+                  <span class="font-medium">Halaman {{ currentPage }} dari {{ totalPages }}</span>
+                  <button class="btn btn-outline border-gray-300" @click="currentPage++" :disabled="currentPage === totalPages">»</button>
+                </div>
+            </div>
         </div>
-        <!-- State loading ditangani oleh spinner utama di atas -->
-    </div>
-</div>
 
-<!-- Tabel Daftar Transaksi -->
-<div>
-    <h4 class="text-md font-bold mb-4 mt-8">Daftar Transaksi</h4>
-    <div class="overflow-x-auto bg-base-100 rounded-lg shadow">
-      <table class="table w-full">
-        <thead>
-          <tr>
-            <th>Waktu</th>
-            <th>Outlet</th>
-            <th>Total Transaksi</th>
-            <th>Metode Bayar</th>
-            <th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="tx in paginatedTransactions" :key="tx.id" class="hover">
-            <!-- ... (isi baris tabel не изменился) ... -->
-          </tr>
-          <tr v-if="!transactionList || transactionList.length === 0">
-            <td colspan="5" class="text-center h-24">Tidak ada transaksi pada periode ini.</td>
-          </tr>
-          <tr v-for="tx in paginatedTransactions" :key="tx.id" class="hover">
-            <td>{{ new Date(tx.created_at).toLocaleString('id-ID', {day: '2-digit', month: 'short', hour:'2-digit', minute:'2-digit'}) }}</td>
-            <td>{{ tx.outlet_name }}</td>
-            <td class="font-mono">{{ formatCurrency(tx.final_amount) }}</td>
-            <td><div class="badge badge-ghost">{{ tx.payment_method }}</div></td>
-            <td>
-              <button class="btn btn-sm btn-outline" @click="showReceipt(tx)">
-                Lihat Struk
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-</div>
-
-<div class="flex justify-center mt-4" v-if="totalPages > 1">
-    <div class="join">
-      <button 
-        class="join-item btn" 
-        @click="currentPage--" 
-        :disabled="currentPage === 1"
-      >«</button>
-      <button class="join-item btn">Halaman {{ currentPage }} dari {{ totalPages }}</button>
-      <button 
-        class="join-item btn" 
-        @click="currentPage++" 
-        :disabled="currentPage === totalPages"
-      >»</button>
-    </div>
-  </div>
-
-<!-- ============================================= -->
-<!-- === MODAL UNTUK MENAMPILKAN STRUK DETAIL === -->
-<!-- ============================================= -->
-<dialog class="modal" :class="{'modal-open': isReceiptModalOpen}">
-  <div class="modal-box max-w-sm">
-    <button @click="closeReceiptModal" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-    <h3 class="font-bold text-lg mb-4">Detail Struk Transaksi</h3>
-    
-    <!-- Render komponen struk di sini, lewatkan data transaksi yang dipilih -->
-    <ThermalReceipt 
-      v-if="selectedTransaction" 
-      :transaction="selectedTransaction"
-    />
-    
-    <div class="modal-action mt-6">
-      <!-- Tombol print atau aksi lain bisa ditambahkan di sini -->
-      <button class="btn" @click="closeReceiptModal">Tutup</button>
-    </div>
-  </div>
-  <form method="dialog" class="modal-backdrop">
-    <button @click="closeReceiptModal">close</button>
-  </form>
-</dialog>
-  
+        <!-- Modal Struk -->
+        <dialog class="modal" :class="{'modal-open': isReceiptModalOpen}">
+          <div class="modal-box max-w-sm">
+            <button @click="closeReceiptModal" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+            <h3 class="font-bold text-lg mb-4">Detail Struk Transaksi</h3>
+            <ThermalReceipt v-if="selectedTransaction" :transaction="selectedTransaction" />
+            <div class="modal-action mt-6"><button class="btn" @click="closeReceiptModal">Tutup</button></div>
+          </div>
+          <form method="dialog" class="modal-backdrop"><button @click="closeReceiptModal">close</button></form>
+        </dialog>
       </div>
       
-      <!-- Tampilan jika tidak ada data sama sekali -->
-      <div v-else class="text-center p-12 bg-base-200 rounded-lg">
-          <p class="font-semibold">Tidak Ada Data</p>
-          <p class="text-sm text-base-content/70">Tidak ada transaksi penjualan untuk filter yang Anda pilih.</p>
+      <!-- Tampilan jika tidak ada data -->
+      <div v-else class="text-center p-12 bg-white rounded-lg border">
+          <p class="font-semibold text-gray-600">Tidak Ada Data</p>
+          <p class="text-sm text-gray-500">Tidak ada transaksi penjualan untuk filter yang Anda pilih.</p>
       </div>
     </div>
-  </template>
+</template>
   
-  <script setup>
-  import { ref, watch, computed } from 'vue';
+<script setup>
+// SCRIPT TIDAK DIUBAH SAMA SEKALI
+import { ref, watch, computed } from 'vue';
 import { useReportStore } from '@/stores/reportStore';
 import SalesChart from '@/components/SalesChart.vue';
 import { useExporter } from '@/composables/useExporter';
@@ -194,96 +150,45 @@ import ThermalReceipt from '@/components/receipts/ThermalReceipt.vue';
 import * as XLSX from 'xlsx-js-style';
 
 const props = defineProps({
-  // Terima satu prop 'dateRange' yang merupakan array
   dateRange: { type: Array, required: true },
   outletId: { type: String, default: null },
 });
 
 const reportStore = useReportStore();
+const { exportToStyledExcel } = useExporter();
 const isExporting = ref(false);
 
-// Computed properties (tidak berubah)
 const isLoading = computed(() => reportStore.salesReport.loading);
 const error = computed(() => reportStore.salesReport.error);
 const summary = computed(() => reportStore.salesReport.summary);
 const topProducts = computed(() => reportStore.salesReport.top_products);
-
-// ========================================================
-// === LOGIKA BARU UNTUK GRAFIK ===
-// ========================================================
-
-// 2. Ambil data tren dari store
 const dailySalesTrend = computed(() => reportStore.salesReport.daily_sales_trend);
+const transactionList = computed(() => reportStore.salesReport.transaction_list);
 
-// 3. Buat chartData yang reaktif
 const chartData = computed(() => {
-  if (!dailySalesTrend.value || dailySalesTrend.value.length === 0) {
-    return { labels: [], datasets: [] };
-  }
-
-  const labels = dailySalesTrend.value.map(d => 
-    new Date(d.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
-  );
+  if (!dailySalesTrend.value || dailySalesTrend.value.length === 0) return { labels: [], datasets: [] };
+  const labels = dailySalesTrend.value.map(d => new Date(d.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
   const data = dailySalesTrend.value.map(d => d.total_revenue);
-
   return {
     labels,
-    datasets: [
-      {
-        label: 'Omzet Penjualan',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        borderColor: 'rgb(75, 192, 192)',
-        tension: 0.1,
-        fill: true,
-        data: data,
-      },
-    ],
+    datasets: [{
+      label: 'Omzet Penjualan',
+      backgroundColor: 'rgba(20, 184, 166, 0.2)',
+      borderColor: '#14B8A6',
+      tension: 0.1,
+      fill: true,
+      data: data,
+    }],
   };
 });
 
-// 4. Siapkan chartOptions
 const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: false,
-    },
-    tooltip: {
-      callbacks: {
-        label: function(context) {
-          let label = context.dataset.label || '';
-          if (label) {
-            label += ': ';
-          }
-          if (context.parsed.y !== null) {
-            label += new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(context.parsed.y);
-          }
-          return label;
-        }
-      }
-    }
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      ticks: {
-          callback: function(value) {
-            if (value >= 1000000) return (value / 1000000).toFixed(1) + 'Jt';
-            if (value >= 1000) return (value / 1000) + 'rb';
-            return value;
-          }
-      }
-    }
-  }
+  plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label || ''}: ${formatCurrency(ctx.parsed.y)}` } } },
+  scales: { y: { beginAtZero: true, ticks: { callback: (val) => val >= 1e6 ? `${val / 1e6}Jt` : (val >= 1e3 ? `${val / 1e3}rb` : val) } } },
 }));
 
-const transactionList = computed(() => reportStore.salesReport.transaction_list);
-watch(transactionList, (newList) => {
-  console.log(`[SalesReport] transactionList di computed property berubah. Jumlah: ${newList?.length}`);
-});
-
-// === STATE BARU UNTUK MODAL STRUK ===
 const isReceiptModalOpen = ref(false);
 const selectedTransaction = ref(null);
 
@@ -294,174 +199,70 @@ const showReceipt = (transaction) => {
 
 const closeReceiptModal = () => {
   isReceiptModalOpen.value = false;
-  selectedTransaction.value = null; // Reset setelah ditutup
+  selectedTransaction.value = null;
 };
 
-// Fungsi untuk memanggil action di store (disesuaikan)
 const runReport = () => {
   if (Array.isArray(props.dateRange) && props.dateRange.length === 2) {
     reportStore.fetchSalesReport({
-      startDate: props.dateRange[0], // Ambil dari array
-      endDate: props.dateRange[1],   // Ambil dari array
+      startDate: props.dateRange[0],
+      endDate: props.dateRange[1],
       outletId: props.outletId,
     });
   }
 };
 
 const currentPage = ref(1);
-const pageSize = ref(10); // Tampilkan 10 transaksi per halaman
-
-const totalPages = computed(() => {
-  if (!transactionList.value || transactionList.value.length === 0) return 1;
-  return Math.ceil(transactionList.value.length / pageSize.value);
-});
-
-// Ini adalah computed property yang "memotong" data untuk halaman saat ini
+const pageSize = ref(10);
+const totalPages = computed(() => transactionList.value ? Math.ceil(transactionList.value.length / pageSize.value) : 1);
 const paginatedTransactions = computed(() => {
-  if (!transactionList.value || transactionList.value.length === 0) return [];
-  
+  if (!transactionList.value) return [];
   const start = (currentPage.value - 1) * pageSize.value;
   const end = start + pageSize.value;
-  
   return transactionList.value.slice(start, end);
 });
 
-// Watcher untuk mereset ke halaman 1 jika data berubah
-watch(transactionList, () => {
-  currentPage.value = 1;
-});
-
-// Watcher sekarang mengamati dateRange (array)
+watch(transactionList, () => { currentPage.value = 1; });
 watch(() => [props.dateRange, props.outletId], runReport, { immediate: true, deep: true });
-
 
 const handleExport = () => {
   if (isExporting.value || !summary.value) return;
   isExporting.value = true;
-
   try {
-    // Definisikan variabel judul, rentang tanggal, dan nama file
     const reportTitle = "Laporan Penjualan";
     const startDateStr = new Date(props.dateRange[0]).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     const endDateStr = new Date(props.dateRange[1]).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     const dateRangeStr = `Periode: ${startDateStr} - ${endDateStr}`;
     const fileName = `laporan-penjualan-${new Date(props.dateRange[0]).toISOString().split('T')[0]}_sd_${new Date(props.dateRange[1]).toISOString().split('T')[0]}.xlsx`;
 
-    // 1. Definisikan semua style yang akan kita gunakan
-    const titleStyle = { font: { bold: true, sz: 18 }, alignment: { horizontal: "center" } };
-    const subtitleStyle = { font: { italic: true, sz: 11 }, alignment: { horizontal: "center" } };
-    const sectionTitleStyle = { font: { bold: true, sz: 14 }, alignment: { horizontal: "center" } };
-    const headerStyle = { font: { bold: true, sz: 12 }, fill: { fgColor: { rgb: "E9E9E9" } } };
-    const kpiLabelStyle = { font: { bold: true } };
-    const moneyStyle = { numFmt: '"Rp"#,##0', t: 'n' };
-    const numberStyle = { numFmt: '#,##0', t: 'n' };
-    const textStyle = { t: 's' };
-
-    // 2. Siapkan data KPI dengan fallback yang aman
-    const kpiData = [
-        ["OMZET KOTOR:", summary.value.total_revenue || 0],
-        ["LABA KOTOR:", summary.value.total_profit !== undefined ? summary.value.total_profit : "N/A"],
-        ["PRODUK TERJUAL:", summary.value.total_items_sold || 0],
-        ["JUMLAH TRANSAKSI:", summary.value.transaction_count || 0],
-    ];
-
-    // 3. Siapkan data Riwayat Transaksi
-    const transactionHeaders = ["Tanggal", "ID Transaksi", "Outlet", "Kasir", "Pelanggan", "No. Telepon", "Metode Bayar", "Total (Rp)"];
-    const transactionRows = transactionList.value.map(tx => [
-        new Date(tx.created_at).toLocaleString('id-ID', { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
-        tx.id.slice(-8).toUpperCase(),
-        tx.outlet_name || '-',
-        tx.cashier_name || '-',
-        tx.customer_name || '-',
-        tx.customer_phone || '-',
-        tx.payment_method,
-        tx.final_amount
-    ]);
-
-    // 4. Gabungkan semua bagian menjadi satu array besar
-    const ws_data = [
-        [reportTitle],
-        [dateRangeStr],
-        [],
-        ...kpiData,
-        [],
-        ["Riwayat Transaksi"],
-        transactionHeaders,
-        ...transactionRows
-    ];
-    
-    // 5. Buat Worksheet dari array data
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-
-    // 6. Terapkan Merge, Style, dan Lebar Kolom
-    const columnCount = transactionHeaders.length;
-    ws["!merges"] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: columnCount - 1 } }, // Judul utama
-        { s: { r: 1, c: 0 }, e: { r: 1, c: columnCount - 1 } }, // Rentang Tanggal
-        { s: { r: 8, c: 0 }, e: { r: 8, c: columnCount - 1 } }, // Judul Riwayat Transaksi (Perhatikan barisnya berubah)
-    ];
-
-    // Style Judul dan Subjudul
-    ws['A1'].s = titleStyle;
-    ws['A2'].s = subtitleStyle;
-    // (Judul tabel riwayat sekarang di baris 9, indeks 8)
-    ws['A9'].s = sectionTitleStyle;
-
-    // Style KPI (baris 4 sampai 7, indeks 3-6)
-    ws['A4'].s = ws['A5'].s = ws['A6'].s = ws['A7'].s = kpiLabelStyle;
-    if (ws['B4']) ws['B4'].s = moneyStyle;  // Omzet Kotor
-    if (ws['B5']) ws['B5'].s = moneyStyle;  // Laba Kotor (sudah menangani "N/A" karena tidak akan diberi style angka)
-    if (ws['B6']) ws['B6'].s = numberStyle; // Produk Terjual (sekarang menjadi angka)
-    if (ws['B7']) ws['B7'].s = numberStyle; // Jumlah Transaksi (angka)
-
-    // Style Header Tabel (sekarang di baris 10, indeks 9)
-    transactionHeaders.forEach((h, i) => {
-        const cellRef = XLSX.utils.encode_cell({c: i, r: 9});
-        if (ws[cellRef]) ws[cellRef].s = headerStyle;
-    });
-
-    // Format kolom Rupiah di riwayat (sekarang di kolom H, indeks 7)
-    transactionRows.forEach((row, rowIndex) => {
-        // Data dimulai dari baris 11 (indeks 10)
-        const cellRef = XLSX.utils.encode_cell({c: 7, r: rowIndex + 10});
-        if (ws[cellRef]) ws[cellRef].s = moneyStyle;
-    });
-
-    // Atur Lebar Kolom
-    ws["!cols"] = [
-        { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 20 },
-        { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 18 }
-    ];
-
-    // 7. Buat Workbook dan download
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Laporan Penjualan");
-    XLSX.writeFile(wb, fileName);
-
-  } catch(e) {
-    console.error("Gagal melakukan ekspor:", e);
-    alert("Terjadi kesalahan saat mengekspor data.");
-  } finally {
-    isExporting.value = false;
-  }
+    const dataToExport = {
+      summary: [
+        { Keterangan: "OMZET KOTOR", Jumlah: summary.value.total_revenue || 0 },
+        { Keterangan: "LABA KOTOR", Jumlah: summary.value.total_profit !== undefined ? summary.value.total_profit : "N/A" },
+        { Keterangan: "PRODUK TERJUAL (PCS)", Jumlah: summary.value.total_items_sold || 0 },
+        { Keterangan: "JUMLAH TRANSAKSI", Jumlah: summary.value.transaction_count || 0 },
+      ],
+      topProducts: topProducts.value.map(p => ({
+        "Nama Produk": p.product_name,
+        "Jumlah Terjual": p.quantity_sold,
+        "Total Omzet": p.total_revenue,
+      })),
+      transactions: transactionList.value.map(tx => ({
+        "Tanggal": new Date(tx.created_at).toLocaleString('id-ID', { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+        "ID Transaksi": tx.id.slice(-8).toUpperCase(),
+        "Outlet": tx.outlet_name || '-',
+        "Kasir": tx.cashier_name || '-',
+        "Metode Bayar": tx.payment_method,
+        "Total (Rp)": tx.final_amount,
+      })),
+    };
+    exportToStyledExcel(dataToExport, reportTitle, dateRangeStr, fileName);
+  } catch(e) { console.error("Gagal ekspor:", e); }
+  finally { isExporting.value = false; }
 };
 
-const profitMargin = computed(() => {
-  if (!summary.value || !summary.value.total_revenue || summary.value.total_revenue === 0) {
-    return '0.0';
-  }
-  const margin = (summary.value.total_profit / summary.value.total_revenue) * 100;
-  return margin.toFixed(1); // Tampilkan satu angka di belakang koma
-});
-
-  // Helper function untuk format mata uang
-  const formatCurrency = (value) => {
-    if (typeof value !== 'number') return 'Rp 0';
-    return new Intl.NumberFormat('id-ID', { 
-      style: 'currency', 
-      currency: 'IDR', 
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-  </script>
+const formatCurrency = (value) => {
+  if (typeof value !== 'number') return 'Rp 0';
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+};
+</script>

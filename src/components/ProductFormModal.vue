@@ -1,92 +1,98 @@
 <template>
-  <div v-if="props.show" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-base-100 p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-          <h2 class="text-2xl font-bold mb-6">{{ isEditMode ? 'Edit' : 'Tambah' }} Produk</h2>
+  <div v-if="props.show" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <h2 class="text-2xl font-bold text-gray-800 mb-1">{{ isEditMode ? 'Edit' : 'Tambah' }} Produk</h2>
+          <p class="text-gray-500 mb-6">Isi detail produk di bawah ini.</p>
           
-          <!-- Form Lengkap -->
-          <div class="space-y-4">
-              <!-- NAMA PRODUK -->
+          <div class="space-y-6">
+              <!-- SEKSI 1: INFORMASI DASAR -->
               <div>
-                  <label class="label"><span class="label-text">Nama Produk*</span></label>
-                  <input type="text" v-model="form.name" placeholder="Contoh: Kopi Susu" class="input input-bordered w-full" />
+                <h3 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Informasi Dasar</h3>
+                <div class="space-y-4">
+                  <div>
+                      <label class="block text-sm font-medium text-gray-700">Nama Produk*</label>
+                      <input type="text" v-model="form.name" placeholder="Contoh: Kopi Susu Gula Aren" class="mt-1 block w-full input input-bordered" />
+                  </div>
+                  <div>
+                      <label class="block text-sm font-medium text-gray-700">Kategori*</label>
+                      <select v-model="form.category_id" class="mt-1 block w-full select select-bordered">
+                          <option disabled selected value="">Pilih Kategori</option>
+                          <option v-for="cat in productStore.categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                      </select>
+                  </div>
+                  <div>
+                      <label class="block text-sm font-medium text-gray-700">Deskripsi</label>
+                      <textarea v-model="form.description" class="mt-1 block w-full textarea textarea-bordered" placeholder="Deskripsi singkat mengenai produk..."></textarea>
+                  </div>
+                </div>
               </div>
 
-              <!-- FOTO PRODUK -->
+              <!-- SEKSI 2: FOTO PRODUK -->
               <div>
-                  <label class="label"><span class="label-text">Foto Produk</span></label>
-                  <input type="file" @change="handlePhotoChange" class="file-input file-input-bordered file-input-sm w-full" accept="image/*" />
-                  <div v-if="photoPreview || form.photo_url" class="mt-2 flex items-center gap-4">
-                      <img :src="photoPreview || form.photo_url" class="w-24 h-24 object-cover rounded border" alt="preview" />
-                      <button v-if="photoPreview || form.photo_url" @click="removePhoto" class="btn btn-sm btn-ghost text-error">Hapus Foto</button>
+                <h3 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Foto Produk</h3>
+                <div class="mt-1 flex items-center gap-6">
+                  <div class="shrink-0">
+                      <img class="h-24 w-24 object-cover rounded-lg shadow-sm" :src="photoPreview || form.photo_url || '/finako.jpg'" alt="Current product photo" />
                   </div>
+                  <label class="block">
+                      <span class="sr-only">Pilih foto profil</span>
+                      <input type="file" @change="handlePhotoChange" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" accept="image/*" />
+                      <button v-if="photoPreview || form.photo_url" @click="removePhoto" class="btn btn-xs btn-ghost text-red-500 mt-2">Hapus Foto</button>
+                  </label>
+                </div>
               </div>
 
-              <!-- KATEGORI PRODUK -->
+              <!-- SEKSI 3: OPSI LANJUTAN -->
               <div>
-                  <label class="label"><span class="label-text">Kategori*</span></label>
-                  <div class="flex items-center gap-2">
-                    <!-- Dropdown kategori ini tidak berubah -->
-                    <select v-model="form.category_id" class="select select-bordered w-full">
-                        <option disabled selected value="">Pilih Kategori</option>
-                        <option v-for="cat in productStore.categories" :key="cat.id" :value="cat.id">
-                            {{ cat.name }}
-                        </option>
-                    </select>
+                <h3 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Opsi Lanjutan</h3>
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <span class="font-medium text-gray-700">Punya Varian?</span>
+                        <p class="text-xs text-gray-500">Aktifkan jika produk punya beberapa jenis, misal: Panas/Dingin, Ukuran S/M/L.</p>
+                      </div>
+                      <input type="checkbox" v-model="form.has_variants" class="toggle toggle-primary" />
                   </div>
-                  <!-- Tombol dan form untuk tambah/hapus kategori DIHILANGKAN dari sini -->
-              </div>
-
-              <!-- DESKRIPSI -->
-              <div>
-                  <label class="label"><span class="label-text">Deskripsi</span></label>
-                  <textarea v-model="form.description" class="textarea textarea-bordered w-full" placeholder="Deskripsi singkat produk..."></textarea>
-              </div>
-
-              <!-- OPTIONS (VARIAN & KOMPOSIT) -->
-              <div class="flex gap-8">
-                  <div class="form-control">
-                      <label class="label cursor-pointer gap-2">
-                          <span class="label-text">Punya Varian?</span> 
-                          <input type="checkbox" v-model="form.has_variants" class="toggle toggle-primary" />
-                      </label>
+                  <div v-if="form.has_variants" class="pl-4">
+                      <button class="btn btn-sm btn-outline border-teal-500 text-teal-600 hover:bg-teal-500 hover:text-white" @click="isVariantModalVisible = true">
+                        Kelola Varian
+                      </button>
+                      <span class="ml-3 text-sm text-gray-500">({{ form.product_variants?.length || 0 }} varian dikonfigurasi)</span>
                   </div>
-                  <div class="form-control">
-                      <label class="label cursor-pointer gap-2">
-                          <span class="label-text">Produk Komposit?</span> 
-                          <input type="checkbox" v-model="form.is_composite" class="toggle toggle-primary" />
-                      </label>
-                  </div>
-              </div>
 
-               <!-- Tombol Kelola Varian -->
-              <div v-if="form.has_variants" class="pl-2">
-                  <button class="btn btn-sm btn-outline" @click="isVariantModalVisible = true">Kelola Varian</button>
-                  <span class="ml-2 text-sm text-gray-500">({{ form.product_variants?.length || 0 }} varian)</span>
+                  <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <span class="font-medium text-gray-700">Produk Komposit?</span>
+                        <p class="text-xs text-gray-500">Aktifkan jika produk ini terbuat dari bahan baku yang perlu dikurangi stoknya.</p>
+                      </div>
+                      <input type="checkbox" v-model="form.is_composite" class="toggle toggle-primary" />
+                  </div>
+                  <div v-if="form.is_composite" class="pl-4">
+                      <button class="btn btn-sm btn-outline border-teal-500 text-teal-600 hover:bg-teal-500 hover:text-white" @click="isRecipeModalVisible = true">
+                        Kelola Resep
+                      </button>
+                      <span class="ml-3 text-sm text-gray-500">({{ form.product_recipes?.length || 0 }} bahan baku di resep)</span>
+                  </div>
+                </div>
               </div>
-              <!-- TOMBOL BARU: Kelola Resep -->
-<div v-if="form.is_composite" class="pl-2">
-    <button class="btn btn-sm btn-outline" @click="isRecipeModalVisible = true">Kelola Resep</button>
-    <span class="ml-2 text-sm text-gray-500">({{ form.product_recipes?.length || 0 }} bahan)</span>
-</div>
           </div>
 
           <!-- Tombol Aksi Utama -->
-          <div class="flex justify-end gap-3 mt-8">
-              <button class="btn" @click="close">Batal</button>
-              <button class="btn btn-primary" @click="save">Simpan</button>
+          <div class="flex justify-end gap-3 mt-8 pt-4 border-t">
+              <button class="btn btn-ghost" @click="close">Batal</button>
+              <button class="btn btn-primary bg-teal-600 hover:bg-teal-700 border-none" @click="save">Simpan Perubahan</button>
           </div>
       </div>
   </div>
 
-  <!-- Modal Anak (Varian) -->
+  <!-- Modal Anak (Varian & Resep) - Tidak ada perubahan di sini -->
   <VariantManagementModal
       :show="isVariantModalVisible"
       :variants="form.product_variants"
       @close="isVariantModalVisible = false"
       @update:variants="updateVariants"
   />
-  <!-- MODAL BARU: Modal Anak (Resep) -->
-<RecipeManagementModal
+  <RecipeManagementModal
     :show="isRecipeModalVisible"
     :recipes="form.product_recipes"
     @close="isRecipeModalVisible = false"
@@ -95,6 +101,7 @@
 </template>
 
 <script setup>
+// SCRIPT TIDAK DIUBAH SAMA SEKALI
 import { ref, watch, computed } from 'vue';
 import { useProductStore } from '@/stores/productStore';
 import VariantManagementModal from './VariantManagementModal.vue';
@@ -130,10 +137,6 @@ function initializeForm() {
 
 watch(() => props.show, (newVal) => { if (newVal) initializeForm() });
 
-// FUNGSI UNTUK MANAJEMEN KATEGORI DIHAPUS DARI SINI
-// no more handleAddNewCategory() or handleDeleteCategory()
-
-// Handler untuk manajemen Foto
 function handlePhotoChange(event) {
     const file = event.target.files[0];
     if (file) {
@@ -148,7 +151,6 @@ function removePhoto() {
     form.value.photo_url = '';
 }
 
-// Handler untuk manajemen Varian
 function updateVariants(newVariants) {
     form.value.product_variants = newVariants;
 }
@@ -157,7 +159,6 @@ function updateRecipes(newRecipes) {
     form.value.product_recipes = newRecipes;
 }
 
-// Aksi Utama
 function close() { emit('close'); }
 
 function save() {

@@ -1,54 +1,56 @@
 <template>
   <div v-if="show" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-base-100 p-6 rounded-lg shadow-xl w-full max-w-lg">
-      <h3 class="text-xl font-bold mb-4">Kelola Kategori</h3>
+    <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
+      <h3 class="text-xl font-bold text-gray-800">Kelola Kategori</h3>
+      <p class="text-sm text-gray-500 mb-4">Tambah, edit, atau hapus kategori produk Anda.</p>
 
       <!-- Form Tambah Kategori Baru -->
-      <div class="mb-4 p-4 bg-base-200 rounded-lg">
-        <label class="label-text font-semibold">Tambah Kategori Baru</label>
-        <div class="flex gap-2 mt-2">
+      <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <label class="block text-sm font-medium text-gray-700">Tambah Kategori Baru</label>
+        <div class="flex gap-2 mt-1">
             <input 
                 v-model="newCategoryName" 
                 @keyup.enter="handleAddNewCategory" 
                 placeholder="Nama kategori baru" 
-                class="input input-bordered input-sm flex-grow"
+                class="input input-bordered w-full"
             />
-            <button @click="handleAddNewCategory" class="btn btn-sm btn-primary">Simpan</button>
+            <button @click="handleAddNewCategory" class="btn bg-teal-600 hover:bg-teal-700 text-white border-none">Simpan</button>
         </div>
       </div>
 
        <!-- Daftar Kategori yang Ada -->
-       <div class="max-h-80 overflow-y-auto">
-         <table class="table table-compact w-full">
-            <thead>
+       <div class="max-h-80 overflow-y-auto border rounded-lg">
+         <table class="table-auto w-full text-sm">
+            <thead class="bg-gray-50 text-left text-gray-600">
                 <tr>
-                    <th>Nama Kategori</th>
-                    <th class="w-28">Aksi</th>
+                    <th class="px-4 py-2 font-medium">Nama Kategori</th>
+                    <th class="px-4 py-2 font-medium text-center w-32">Aksi</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr v-for="category in productStore.categories" :key="category.id">
-                    <td>
-                        <!-- Tampilkan input jika sedang diedit, jika tidak tampilkan teks biasa -->
+            <tbody class="divide-y divide-gray-200">
+                <!-- LOGIKA v-for dan :key TIDAK DIUBAH -->
+                <tr v-for="category in productStore.categories" :key="category.id" :class="{'bg-yellow-50': editingCategoryId === category.id}">
+                    <td class="px-4 py-2">
+                        <!-- LOGIKA v-if dan v-model TIDAK DIUBAH -->
                         <input 
                             v-if="editingCategoryId === category.id" 
                             v-model="editingCategoryName"
                             @keyup.enter="saveEdit(category.id)"
                             @keyup.esc="cancelEdit"
-                            class="input input-xs input-bordered w-full" 
+                            class="input input-sm input-bordered w-full" 
                         />
                         <span v-else>{{ category.name }}</span>
                     </td>
-                    <td>
-                        <!-- Tampilkan tombol Simpan/Batal jika sedang diedit -->
-                        <div v-if="editingCategoryId === category.id">
-                            <button @click="saveEdit(category.id)" class="btn btn-ghost btn-xs text-success">Simpan</button>
-                            <button @click="cancelEdit" class="btn btn-ghost btn-xs">Batal</button>
+                    <td class="px-4 py-2">
+                        <!-- LOGIKA v-if TIDAK DIUBAH -->
+                        <div v-if="editingCategoryId === category.id" class="flex justify-center gap-1">
+                            <button @click="saveEdit(category.id)" class="btn btn-xs btn-ghost text-green-600">Simpan</button>
+                            <button @click="cancelEdit" class="btn btn-xs btn-ghost">Batal</button>
                         </div>
-                        <!-- Tampilkan tombol Edit/Hapus jika tidak sedang diedit -->
-                        <div v-else>
-                            <button @click="startEdit(category)" class="btn btn-ghost btn-xs">Edit</button>
-                            <button @click="productStore.deleteCategory(category.id)" class="btn btn-ghost btn-xs text-error">Hapus</button>
+                        <!-- LOGIKA v-else TIDAK DIUBAH -->
+                        <div v-else class="flex justify-center gap-1">
+                            <button @click="startEdit(category)" class="btn btn-xs btn-ghost text-gray-500">Edit</button>
+                            <button @click="productStore.deleteCategory(category.id)" class="btn btn-xs btn-ghost text-red-500">Hapus</button>
                         </div>
                     </td>
                 </tr>
@@ -58,13 +60,14 @@
 
       <!-- Tombol Tutup -->
       <div class="flex justify-end mt-6">
-        <button class="btn" @click="$emit('close')">Tutup</button>
+        <button class="btn btn-ghost" @click="$emit('close')">Tutup</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+// SCRIPT TIDAK DIUBAH SAMA SEKALI
 import { ref } from 'vue';
 import { useProductStore } from '@/stores/productStore';
 
@@ -73,14 +76,13 @@ defineEmits(['close']);
 
 const productStore = useProductStore();
 
-// State lokal untuk UI modal ini
 const newCategoryName = ref('');
 const editingCategoryId = ref(null);
 const editingCategoryName = ref('');
 
 async function handleAddNewCategory() {
     await productStore.addCategory(newCategoryName.value);
-    newCategoryName.value = ''; // Kosongkan input setelah berhasil
+    newCategoryName.value = '';
 }
 
 function startEdit(category) {
@@ -96,7 +98,7 @@ function cancelEdit() {
 async function saveEdit(categoryId) {
     const success = await productStore.updateCategory(categoryId, editingCategoryName.value);
     if (success) {
-        cancelEdit(); // Kembali ke mode normal jika berhasil
+        cancelEdit();
     }
 }
 </script>

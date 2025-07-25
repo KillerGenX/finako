@@ -1,32 +1,53 @@
 <template>
   <dialog class="modal" :class="{ 'modal-open': show }">
     <div class="modal-box">
-      <div class="text-center">
-        <!-- ... Konten modal tidak berubah ... -->
-        <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+      <div class="text-center p-4">
+        <div class="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
+          <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
         </div>
-        <h3 class="font-bold text-lg">Transaksi Berhasil!</h3>
-        <p class="py-2 text-sm">ID Transaksi: {{ transactionId }}</p>
+        <h3 class="font-bold text-2xl text-gray-800">Transaksi Berhasil!</h3>
+        <p class="py-2 text-gray-500">ID Transaksi: <span class="font-mono">{{ transactionId }}</span></p>
       </div>
       
-      <div class="modal-action flex-col space-y-2 mt-4">
-        <button @click="emit('newTransaction')" class="btn btn-primary w-full">Transaksi Baru</button>
-        <button @click="handlePrint" class="btn btn-outline w-full">Cetak Struk</button>
-        <button @click="handleSendWhatsApp" class="btn btn-outline w-full btn-success" :class="{ 'loading': isGeneratingPdf }" :disabled="isGeneratingPdf">
-          Kirim via WhatsApp
+      <!-- Tombol Aksi dengan Hierarki yang Jelas -->
+      <div class="modal-action flex-col space-y-3 px-4 pb-4">
+        <!-- Aksi Utama -->
+        <button @click="emit('newTransaction')" class="btn btn-primary bg-teal-600 hover:bg-teal-700 border-none text-white w-full btn-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Mulai Transaksi Baru
         </button>
+        <!-- Aksi Sekunder -->
+        <div class="grid grid-cols-2 gap-3 w-full">
+            <button @click="handlePrint" class="btn btn-outline w-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Cetak Struk
+            </button>
+            <button 
+                @click="handleSendWhatsApp" 
+                class="btn btn-outline btn-success" 
+                :class="{ 'loading': isGeneratingPdf }" 
+                :disabled="isGeneratingPdf || !customerPhone"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                Kirim via WA
+            </button>
+        </div>
       </div>
 
-      <div v-if="pdfError" role="alert" class="alert alert-error text-sm mt-4">
-        <!-- ... Konten error tidak berubah ... -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2 2m2-2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      <div v-if="pdfError" role="alert" class="alert alert-error text-sm mt-4 mx-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2 2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
         <span>{{ pdfError }}</span>
       </div>
       
+      <!-- Struk untuk dicetak tetap tersembunyi, tidak ada perubahan di sini -->
       <div class="absolute -left-[9999px]">
         <div ref="printableReceipt">
-            <!-- Komponen ThermalReceipt tidak berubah -->
             <ThermalReceipt 
               v-if="fullTransactionData"
               :transaction="fullTransactionData"
@@ -44,14 +65,15 @@
   </dialog>
 </template>
 
+
 <script setup>
+// Bagian script tidak diubah
 import { ref, computed, nextTick, watch } from 'vue';
 import { supabase } from '@/supabase';
 import ThermalReceipt from '@/components/receipts/ThermalReceipt.vue';
 import { useUserStoreRefactored } from '@/stores/userStoreRefactored';
 import { useProductStore } from '@/stores/productStore';
 
-// Props dan state tidak berubah
 const props = defineProps({
   show: Boolean,
   transactionId: String,
@@ -70,13 +92,12 @@ const activeOutlet = computed(() =>
   productStore.outlets.find(o => o.id === userStore.activeOutletId)
 );
 watch(() => props.show, (newVal) => {
-  if (!newVal) {
+  if (newVal) {
     pdfError.value = null;
     fullTransactionData.value = null;
   }
 });
 
-// Fungsi fetch tetap sama
 async function fetchTransactionDetails() {
   if (!props.transactionId || fullTransactionData.value) return; 
   try {
@@ -98,11 +119,7 @@ async function fetchTransactionDetails() {
   }
 }
 
-// --- PERUBAHAN UTAMA ADA DI SINI ---
-
-// 1. Buat "resep" CSS di satu tempat agar bisa digunakan bersama
 const getReceiptCss = () => `
-  /* Gaya dasar */
   body { background-color: white; padding: 10px; }
   .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   .text-xs { font-size: 0.75rem; line-height: 1rem; }
@@ -116,34 +133,12 @@ const getReceiptCss = () => `
   .font-semibold { font-weight: 600; }
   .pl-2 { padding-left: 0.5rem; }
   .mt-3 { margin-top: 0.75rem; }
-
-  /* Gaya Tabel Anti Gagal */
-  table { 
-    width: 100%;
-    border-collapse: collapse;
-  }
-  td { 
-    padding: 1px 0;
-    vertical-align: top;
-  }
-
-  /* === Gaya HR (GARIS PEMISAH) ANTI GAGAL === */
-  hr.separator {
-    border: none; /* Reset gaya default browser */
-    border-top: 1px dashed black; /* Buat garis putus-putus kita sendiri */
-    height: 1px; /* Pastikan tidak ada ruang vertikal ekstra */
-    margin: 0.5rem 0; /* Beri sedikit nafas */
-    color: transparent; /* Sembunyikan warna default di beberapa browser aneh */
-    background-color: transparent; /* Sama seperti di atas */
-  }
-
-  hr.separator.double-line {
-    border-top-style: double; /* Ubah gaya menjadi garis ganda */
-    border-top-width: 3px; /* Buat garis lebih tebal */
-  }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 1px 0; vertical-align: top; }
+  hr.separator { border: none; border-top: 1px dashed black; height: 1px; margin: 0.5rem 0; color: transparent; background-color: transparent; }
+  hr.separator.double-line { border-top-style: double; border-top-width: 3px; }
 `;
 
-// 2. Buat fungsi untuk menghasilkan HTML lengkap, bisa dipakai bersama juga
 const getFullHtml = (bodyContent) => {
   return `
     <!DOCTYPE html>
@@ -160,7 +155,6 @@ const getFullHtml = (bodyContent) => {
   `;
 };
 
-// 3. Perbarui `handlePrint` untuk menggunakan resep yang sama
 async function handlePrint() {
   await fetchTransactionDetails();
   await nextTick();
@@ -178,7 +172,6 @@ async function handlePrint() {
   printWindow.close();
 }
 
-// 4. `handleSendWhatsApp` sekarang juga menggunakan fungsi helper yang sama
 async function handleSendWhatsApp() {
   if (isGeneratingPdf.value) return;
   isGeneratingPdf.value = true;
@@ -194,7 +187,7 @@ async function handleSendWhatsApp() {
     }
     
     const fullHtmlContent = getFullHtml(receiptHtmlBody);
-    const apiUrl = `https://dark-buses-cheer.loca.lt/generate-receipt`; // Ganti dengan URL produksi nanti
+    const apiUrl = `https://dark-buses-cheer.loca.lt/generate-receipt`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -208,11 +201,14 @@ async function handleSendWhatsApp() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.details || result.error || 'Gagal membuat PDF.');
     
-    // ... sisa logika WhatsApp tidak berubah ...
     const pdfUrl = result.url;
     if (!pdfUrl) throw new Error('Server tidak memberikan URL PDF.');
     const greeting = props.customerName ? `Halo ${props.customerName},` : 'Halo,';
-    const message = `${greeting} berikut adalah struk untuk transaksi Anda di ${userStore.business?.name}:\n\n${pdfUrl}\n\nTerima kasih!`;
+    const message = `${greeting} berikut adalah struk untuk transaksi Anda di ${userStore.business?.name}:
+
+${pdfUrl}
+
+Terima kasih!`;
     let waUrl = `https://wa.me/`;
     if (props.customerPhone) {
       const formattedPhone = props.customerPhone.replace(/[^0-9]/g, '').replace(/^0/, '62');

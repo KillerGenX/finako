@@ -1,203 +1,166 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-100 flex items-center justify-center px-4">
-    <div class="max-w-md w-full space-y-8">
-      <!-- Header -->
+  <div class="relative min-h-screen bg-gradient-to-br from-teal-50 via-white to-cyan-50 overflow-hidden flex items-center justify-center p-4">
+    <!-- Ornamen Latar Belakang -->
+    <div class="absolute top-0 left-0 -translate-x-1/4 -translate-y-1/4 z-0 text-teal-100">
+      <svg width="404" height="404" fill="none" viewBox="0 0 404 404">
+        <defs>
+          <pattern id="svg-pattern-squares-1" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+            <rect x="0" y="0" width="4" height="4" class="text-teal-200" fill="currentColor"></rect>
+          </pattern>
+        </defs>
+        <rect width="404" height="404" fill="url(#svg-pattern-squares-1)"></rect>
+      </svg>
+    </div>
+    <div class="absolute bottom-0 right-0 translate-x-1/3 translate-y-1/3 z-0 text-teal-100 opacity-75">
+       <svg width="300" height="300" fill="none" viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="100" fill="currentColor" />
+       </svg>
+    </div>
+
+    <!-- Konten Utama -->
+    <div class="relative max-w-lg w-full bg-white/70 backdrop-blur-sm rounded-xl shadow-2xl z-10 p-8 space-y-6">
+      
+      <!-- Header Dinamis -->
       <div class="text-center">
-        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 mb-4">
-          <svg class="h-8 w-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">
-          Menunggu Persetujuan
+        <img class="mx-auto h-12 w-auto mb-4" src="@/assets/finako.svg" alt="Finako Logo" />
+        <h1 class="text-3xl font-bold text-gray-900">
+          <span v-if="currentView === 'selectPackage'">Pilih Paket Langganan</span>
+          <span v-else-if="currentView === 'pendingPayment'">Menunggu Pembayaran</span>
+          <span v-else-if="currentView === 'failed'">Langganan Gagal</span>
+          <span v-else>Memuat Status</span>
         </h1>
-        <p class="text-gray-600">
-          Registrasi Anda sedang diproses oleh tim admin
+        <p class="mt-2 text-gray-600">
+          <span v-if="currentView === 'selectPackage'">Pilih paket yang paling sesuai untuk bisnis Anda.</span>
+          <span v-else-if="currentView === 'pendingPayment'">Selesaikan pembayaran untuk mengaktifkan akun Anda.</span>
+          <span v-else-if="currentView === 'failed'">Terjadi masalah dengan langganan Anda.</span>
+          <span v-else>Sedang memeriksa status langganan Anda...</span>
         </p>
       </div>
 
-
-      <!-- Status Card -->
-      <div class="bg-white rounded-lg shadow-xl p-8 relative">
-        <!-- Loading Overlay -->
-        <div v-if="isChecking" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 z-50">
-          <svg class="animate-spin h-8 w-8 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <!-- Kontainer View Dinamis -->
+      <div class="bg-white/50 rounded-lg p-6 min-h-[300px] flex items-center justify-center">
+        <!-- Loading View -->
+        <div v-if="currentView === 'loading'" class="text-center">
+          <svg class="animate-spin h-8 w-8 text-teal-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-        </div>
-        <!-- Organization Info -->
-        <div v-if="businessInfo && userProfile" class="mb-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">Informasi Organisasi</h2>
-          <div class="space-y-3">
-            <div class="flex justify-between">
-              <span class="text-sm text-gray-600">Nama Bisnis:</span>
-              <span class="text-sm font-medium text-gray-900">{{ businessInfo.name }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-sm text-gray-600">Email:</span>
-              <span class="text-sm font-medium text-gray-900">{{ userStore.userEmail }}</span>
-            </div>
-          </div>
+          <p class="mt-2 text-sm text-gray-600">Memeriksa data...</p>
         </div>
 
-        <!-- PILIH PAKET -->
-        <div v-if="!isChecking && !subscription">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">Pilih Paket Langganan</h2>
+        <!-- Select Package View -->
+        <div v-else-if="currentView === 'selectPackage'" class="w-full">
           <form @submit.prevent="handleChoosePackage" class="space-y-4">
-            <div>
-              <label for="packageId" class="block text-sm font-medium text-gray-700 mb-2">Paket</label>
-              <select id="packageId" v-model="selectedPackageId" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option value="">Pilih paket</option>
-                <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
-                  {{ pkg.name }} - Rp {{ pkg.price.toLocaleString('id-ID') }}/bulan
-                </option>
-              </select>
+            <div class="space-y-3">
+              <label v-for="pkg in packages" :key="pkg.id" 
+                     :class="['block p-4 border rounded-lg cursor-pointer transition-all', selectedPackageId === pkg.id ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-500' : 'border-gray-300 bg-white hover:border-teal-400']">
+                <input type="radio" :value="pkg.id" v-model="selectedPackageId" class="sr-only">
+                <div class="flex justify-between items-center">
+                  <span class="font-semibold text-gray-800">{{ pkg.name }}</span>
+                  <span class="font-bold text-teal-600">Rp {{ pkg.price.toLocaleString('id-ID') }}/bln</span>
+                </div>
+                <p class="text-sm text-gray-500 mt-1">{{ pkg.description || 'Deskripsi paket dasar.' }}</p>
+              </label>
             </div>
-            <button type="submit" :disabled="isSubmitting || !selectedPackageId" class="w-full py-2 px-4 rounded-md bg-yellow-500 text-white font-semibold hover:bg-yellow-600 disabled:opacity-50">
-              {{ isSubmitting ? 'Memproses...' : 'Pilih Paket & Lanjutkan' }}
+            <button type="submit" :disabled="isSubmitting || !selectedPackageId" 
+                    class="w-full py-3 px-4 rounded-md text-white font-semibold bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-wait transition-colors">
+              {{ isSubmitting ? 'Memproses...' : 'Lanjutkan Pembayaran' }}
             </button>
           </form>
         </div>
 
-        <!-- INSTRUKSI PEMBAYARAN -->
-        <div v-else-if="!isChecking && subscription && subscription.status === 'pending'">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">Instruksi Pembayaran</h2>
+        <!-- Pending Payment View -->
+        <div v-else-if="currentView === 'pendingPayment'" class="w-full text-center">
           <div class="mb-4">
-            <p class="text-sm text-gray-700">Silakan lakukan pembayaran sesuai paket yang dipilih untuk mengaktifkan langganan Anda.</p>
-            <ul class="mt-2 text-sm text-gray-600">
-              <li>Paket: <span class="font-medium text-gray-900">{{ packages.find(p=>p.id===subscription.plan_id)?.name || 'Paket' }}</span></li>
-              <li>Harga: <span class="font-medium text-gray-900">Rp {{ packages.find(p=>p.id===subscription.plan_id)?.price?.toLocaleString('id-ID') }}</span></li>
-              <li>Status: <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Menunggu Pembayaran</span></li>
-            </ul>
-            <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-              <p class="text-xs text-yellow-700">Transfer ke rekening BCA 1234567890 a.n. PT Finako Digital (contoh). Setelah pembayaran, admin akan mengaktifkan langganan Anda.</p>
-            </div>
+             <p class="text-sm text-gray-700">Paket yang dipilih:</p>
+             <p class="font-bold text-xl text-teal-700">{{ packages.find(p=>p.id===subscription.plan_id)?.name || 'Paket' }} - Rp {{ packages.find(p=>p.id===subscription.plan_id)?.price?.toLocaleString('id-ID') }}</p>
+          </div>
+          <div class="p-4 bg-teal-50 border border-teal-200 rounded-lg">
+            <h3 class="font-semibold text-gray-800">Instruksi:</h3>
+            <p class="text-sm text-teal-800 mt-1">Silakan transfer ke rekening BCA <strong class="font-bold">1234567890</strong> a.n. <strong>PT Finako Digital</strong>. Langganan akan aktif setelah pembayaran diverifikasi oleh admin.</p>
           </div>
         </div>
 
-        <!-- STATUS DITOLAK -->
-        <div v-else-if="!isChecking && subscription && subscription.status === 'rejected'">
-          <div class="bg-red-50 border border-red-200 rounded-md p-4">
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <h3 class="text-sm font-medium text-red-800">
-                  Registrasi Ditolak
-                </h3>
-                <div class="mt-2 text-sm text-red-700">
-                  <p>Mohon maaf, registrasi/langganan Anda tidak dapat diproses. Silakan hubungi support untuk informasi lebih lanjut.</p>
-                </div>
-              </div>
-            </div>
+        <!-- Failed View -->
+        <div v-else-if="currentView === 'failed'" class="w-full text-center">
+          <div class="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+            <svg class="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
           </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="space-y-3">
-          <!-- Refresh Button -->
-          <button
-            @click="checkStatus"
-            :disabled="isChecking"
-            class="w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg v-if="isChecking" class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <svg v-else class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            {{ isChecking ? 'Memeriksa...' : 'Periksa Status' }}
-          </button>
-
-          <!-- Logout Button -->
-          <button
-            @click="handleLogout"
-            :disabled="isLoggingOut"
-            class="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg v-if="isLoggingOut" class="animate-spin -ml-1 mr-2 h-4 w-4 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <svg v-else class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            {{ isLoggingOut ? 'Keluar...' : 'Keluar' }}
-          </button>
-        </div>
-
-        <!-- Auto Refresh Info -->
-        <div class="mt-6 text-center">
-          <p class="text-xs text-gray-500">
-            Status akan dicek otomatis setiap {{ autoRefreshInterval / 1000 }} detik
-          </p>
-          <p class="text-xs text-gray-400 mt-1">
-            Refresh berikutnya dalam {{ nextRefreshCountdown }} detik
-          </p>
+           <p class="mt-4 text-sm text-red-700">
+             Mohon maaf, langganan Anda tidak dapat diproses. Silakan hubungi support untuk bantuan.
+           </p>
         </div>
       </div>
-
-      <!-- Support Info -->
-      <div class="text-center text-sm text-gray-500">
-        <p>
-          Butuh bantuan? Hubungi support di 
-          <a href="mailto:support@finako.id" class="text-blue-600 hover:text-blue-500">
-            support@finako.id
-          </a>
-        </p>
+      
+      <!-- Tombol Aksi & Informasi -->
+      <div class="space-y-3 pt-6">
+        <div class="text-center text-xs text-gray-500">
+          Status diperbarui otomatis. Countdown: {{ nextRefreshCountdown }}s
+        </div>
+        <button @click="checkStatus" :disabled="isChecking" 
+                class="w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
+          <svg :class="['h-4 w-4 mr-2', isChecking && 'animate-spin']" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {{ isChecking ? 'Memeriksa...' : 'Periksa Status Sekarang' }}
+        </button>
+        <button @click="handleLogout" :disabled="isLoggingOut"
+                class="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50">
+          Keluar
+        </button>
       </div>
+
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-// Pastikan kedua store diimpor
 import { useUserStoreRefactored, useUIStore } from '@/stores/userStoreRefactored';
 import { supabase } from '@/supabase';
 
 const router = useRouter();
 const userStore = useUserStoreRefactored();
-const uiStore = useUIStore(); // Inisialisasi uiStore untuk notifikasi
+const uiStore = useUIStore();
 
-// State lokal
+// State untuk UI
 const isChecking = ref(false);
 const isLoggingOut = ref(false);
-const autoRefreshInterval = ref(30000);
+const isSubmitting = ref(false);
 const nextRefreshCountdown = ref(30);
 const autoRefreshTimer = ref(null);
 const countdownTimer = ref(null);
+
+// State untuk data
 const packages = ref([]);
 const selectedPackageId = ref('');
-const isSubmitting = ref(false);
 
 // Computed properties
 const businessInfo = computed(() => userStore.business);
-const userProfile = computed(() => userStore.profile);
 const subscription = computed(() => userStore.currentSubscription);
 
+// **LOGIC FIX:** Refined computed property for view switching
+const currentView = computed(() => {
+  // Priority 1: If we are actively checking the status, always show the loading indicator.
+  if (isChecking.value) return 'loading';
 
-// ===============================================
-// === FUNGSI-FUNGSI PENTING ADA DI SINI ===
-// ===============================================
+  // After checking is done, determine the view based on subscription status.
+  if (!subscription.value) return 'selectPackage';
+  if (subscription.value.status === 'pending') return 'pendingPayment';
+  if (subscription.value.status === 'rejected') return 'failed';
+  
+  // Fallback for any other unexpected state, prompts a re-check.
+  return 'loading';
+});
 
-// FUNGSI INI HARUS ADA SEBELUM DIPANGGIL OLEH checkStatus
-function cleanup() {
-  if (autoRefreshTimer.value) {
-    clearInterval(autoRefreshTimer.value);
-    autoRefreshTimer.value = null;
-  }
-  if (countdownTimer.value) {
-    clearInterval(countdownTimer.value);
-    countdownTimer.value = null;
-  }
+// --- FUNGSI-FUNGSI ---
+
+function cleanupTimers() {
+  if (autoRefreshTimer.value) clearInterval(autoRefreshTimer.value);
+  if (countdownTimer.value) clearInterval(countdownTimer.value);
+  autoRefreshTimer.value = null;
+  countdownTimer.value = null;
 }
 
 async function checkStatus() {
@@ -205,22 +168,14 @@ async function checkStatus() {
   isChecking.value = true;
   try {
     await userStore.fetchUserSession();
-
-    const updatedSubscription = userStore.currentSubscription;
+    const sub = userStore.currentSubscription;
     const onboardingDone = userStore.isOnboardingCompleted;
     
-    if (updatedSubscription && updatedSubscription.status === 'active') {
-        // Panggil fungsi cleanup yang sudah kita definisikan di atas
-        cleanup(); 
-
-        if (!onboardingDone) {
-            router.replace({ name: 'Onboarding' });
-        } else {
-            router.replace({ name: 'Dashboard' });
-        }
+    if (sub && sub.status === 'active') {
+      cleanupTimers();
+      router.replace({ name: onboardingDone ? 'Dashboard' : 'Onboarding' });
     }
   } catch (error) {
-    console.error('Status check failed:', error);
     uiStore.showNotification('Gagal memeriksa status.', 'error');
   } finally {
     isChecking.value = false;
@@ -244,10 +199,10 @@ async function handleChoosePackage() {
   });
 
   if (error) {
-    uiStore.showNotification(error.message, 'error'); 
+    uiStore.showNotification(error.message, 'error');
   } else {
-    uiStore.showNotification('Paket berhasil dipilih. Silakan lakukan pembayaran.', 'success');
-    await checkStatus();
+    uiStore.showNotification('Paket berhasil dipilih. Lanjutkan ke pembayaran.', 'success');
+    await checkStatus(); // Re-check status untuk update view
   }
   isSubmitting.value = false;
 }
@@ -257,30 +212,26 @@ async function handleLogout() {
   await userStore.logout();
 }
 
-// Setup auto refresh
 function setupAutoRefresh() {
-  cleanup(); // Hentikan timer lama sebelum memulai yang baru
+  cleanupTimers();
+  nextRefreshCountdown.value = 30;
 
   countdownTimer.value = setInterval(() => {
-    nextRefreshCountdown.value = nextRefreshCountdown.value > 0 ? nextRefreshCountdown.value - 1 : autoRefreshInterval.value / 1000;
+    nextRefreshCountdown.value = nextRefreshCountdown.value > 0 ? nextRefreshCountdown.value - 1 : 30;
   }, 1000);
 
-  autoRefreshTimer.value = setInterval(() => {
-    checkStatus();
-  }, autoRefreshInterval.value);
+  autoRefreshTimer.value = setInterval(checkStatus, 30000);
 }
 
 // Lifecycle Hooks
 onMounted(() => {
   loadPackages();
-  // Tidak perlu checkStatus() di sini, biarkan guard yang menangani saat pertama kali masuk
-  // Tapi kita tetap setup auto-refresh jika perlu
-  if (!subscription.value || subscription.value.status !== 'active') {
-    setupAutoRefresh();
-  }
+  // **LOGIC FIX:** Removed initial checkStatus() call. 
+  // The application's router guard handles the first check.
+  setupAutoRefresh();
 });
 
 onUnmounted(() => {
-  cleanup(); // Pastikan timer dibersihkan saat komponen dihancurkan
+  cleanupTimers();
 });
 </script>

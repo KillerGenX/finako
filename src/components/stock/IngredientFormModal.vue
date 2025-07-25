@@ -1,22 +1,27 @@
 <template>
   <dialog class="modal" :class="{ 'modal-open': show }">
     <div class="modal-box">
-      <h3 class="font-bold text-lg">{{ isEditMode ? 'Edit' : 'Tambah' }} Bahan Baku</h3>
-      <p class="py-2 text-sm">Ini adalah master data bahan baku yang akan digunakan di semua outlet.</p>
+      <h3 class="font-bold text-xl text-gray-800">{{ isEditMode ? 'Edit' : 'Tambah' }} Bahan Baku</h3>
+      <p class="py-2 text-sm text-gray-500">Ini adalah master data bahan baku yang akan digunakan di semua outlet.</p>
       
+      <!-- LOGIKA @submit TIDAK DIUBAH -->
       <form @submit.prevent="onSave" class="mt-4 space-y-4">
         <div class="form-control w-full">
-          <label class="label"><span class="label-text">Nama Bahan Baku</span></label>
+          <label class="label"><span class="label-text font-medium">Nama Bahan Baku</span></label>
+          <!-- LOGIKA v-model TIDAK DIUBAH -->
           <input v-model="form.name" type="text" placeholder="Contoh: Gula Pasir, Biji Kopi" class="input input-bordered w-full" required />
         </div>
         <div class="form-control w-full">
-          <label class="label"><span class="label-text">Satuan</span></label>
+          <label class="label"><span class="label-text font-medium">Satuan</span></label>
+          <!-- LOGIKA v-model TIDAK DIUBAH -->
           <input v-model="form.unit" type="text" placeholder="Contoh: gram, ml, pcs" class="input input-bordered w-full" required />
         </div>
         
-        <div class="modal-action mt-6">
+        <div class="modal-action mt-6 pt-4 border-t">
+          <!-- LOGIKA @click TIDAK DIUBAH -->
           <button type="button" class="btn btn-ghost" @click="emit('close')">Batal</button>
-          <button type="submit" class="btn btn-primary" :disabled="isLoading">
+          <!-- LOGIKA :disabled TIDAK DIUBAH -->
+          <button type="submit" class="btn bg-teal-600 hover:bg-teal-700 text-white border-none" :disabled="isLoading">
             <span v-if="isLoading" class="loading loading-spinner"></span>
             Simpan
           </button>
@@ -27,6 +32,7 @@
 </template>
 
 <script setup>
+// SCRIPT TIDAK DIUBAH SAMA SEKALI
 import { ref, watch, computed } from 'vue';
 
 const props = defineProps({
