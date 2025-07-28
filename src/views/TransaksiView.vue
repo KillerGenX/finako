@@ -33,7 +33,7 @@
             @click="product.has_variants ? openVariantModal(product) : cartStore.addProductToCart(product)"
           >
             <figure class="relative">
-              <img :src="product.photo_url || '/finako.svg'" alt="Product" class="h-32 w-full object-cover rounded-t-lg" />
+              <img :src="product.photo_url || '/finako.jpg'" alt="Product" class="h-32 w-full object-cover rounded-t-lg" />
               <div v-if="product.stock <= 0" class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-t-lg">
                   <span class="badge badge-error font-semibold text-white">STOK HABIS</span>
               </div>

@@ -42,32 +42,34 @@
                 </div>
               </div>
 
-              <!-- SEKSI 3: OPSI LANJUTAN -->
-              <div>
+              <!-- SEKSI 3: OPSI LANJUTAN (DENGAN KONDISI v-if) -->
+              <div v-if="currentPlan !== 'basic'">
                 <h3 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Opsi Lanjutan</h3>
                 <div class="space-y-4">
-                  <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <!-- Opsi Varian: Muncul untuk Pro & Enterprise -->
+                  <div v-if="currentPlan === 'pro' || currentPlan === 'enterprise'" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
                         <span class="font-medium text-gray-700">Punya Varian?</span>
                         <p class="text-xs text-gray-500">Aktifkan jika produk punya beberapa jenis, misal: Panas/Dingin, Ukuran S/M/L.</p>
                       </div>
                       <input type="checkbox" v-model="form.has_variants" class="toggle toggle-primary" />
                   </div>
-                  <div v-if="form.has_variants" class="pl-4">
+                  <div v-if="(currentPlan === 'pro' || currentPlan === 'enterprise') && form.has_variants" class="pl-4">
                       <button class="btn btn-sm btn-outline border-teal-500 text-teal-600 hover:bg-teal-500 hover:text-white" @click="isVariantModalVisible = true">
                         Kelola Varian
                       </button>
                       <span class="ml-3 text-sm text-gray-500">({{ form.product_variants?.length || 0 }} varian dikonfigurasi)</span>
                   </div>
 
-                  <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <!-- Opsi Komposit: Muncul hanya untuk Enterprise -->
+                  <div v-if="currentPlan === 'enterprise'" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
                         <span class="font-medium text-gray-700">Produk Komposit?</span>
                         <p class="text-xs text-gray-500">Aktifkan jika produk ini terbuat dari bahan baku yang perlu dikurangi stoknya.</p>
                       </div>
                       <input type="checkbox" v-model="form.is_composite" class="toggle toggle-primary" />
                   </div>
-                  <div v-if="form.is_composite" class="pl-4">
+                  <div v-if="currentPlan === 'enterprise' && form.is_composite" class="pl-4">
                       <button class="btn btn-sm btn-outline border-teal-500 text-teal-600 hover:bg-teal-500 hover:text-white" @click="isRecipeModalVisible = true">
                         Kelola Resep
                       </button>
@@ -85,7 +87,6 @@
       </div>
   </div>
 
-  <!-- Modal Anak (Varian & Resep) - Tidak ada perubahan di sini -->
   <VariantManagementModal
       :show="isVariantModalVisible"
       :variants="form.product_variants"
@@ -101,15 +102,19 @@
 </template>
 
 <script setup>
-// SCRIPT TIDAK DIUBAH SAMA SEKALI
 import { ref, watch, computed } from 'vue';
 import { useProductStore } from '@/stores/productStore';
+import { useUserStoreRefactored } from '@/stores/userStoreRefactored'; // 1. Impor user store
 import VariantManagementModal from './VariantManagementModal.vue';
 import RecipeManagementModal from './RecipeManagementModal.vue'; 
 
 const props = defineProps({ show: Boolean, productToEdit: Object });
 const emit = defineEmits(['close', 'save']);
 const productStore = useProductStore();
+const userStore = useUserStoreRefactored(); // 2. Inisialisasi user store
+
+// 3. Buat computed property untuk mendapatkan nama plan
+const currentPlan = computed(() => userStore.currentSubscription?.plans?.name?.toLowerCase() || 'basic');
 
 const form = ref({});
 const isEditMode = computed(() => !!props.productToEdit);
@@ -166,6 +171,15 @@ function save() {
         alert('Nama Produk dan Kategori wajib diisi.');
         return;
     }
+    // Jika opsi tidak terlihat karena limitasi plan, pastikan datanya kosong saat disimpan
+    if (currentPlan.value === 'basic') {
+        form.value.has_variants = false;
+        form.value.is_composite = false;
+    }
+    if (currentPlan.value === 'pro') {
+        form.value.is_composite = false;
+    }
+
     if (!form.value.has_variants) { form.value.product_variants = []; }
     if (!form.value.is_composite) {
         form.value.product_recipes = [];

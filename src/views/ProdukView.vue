@@ -67,7 +67,7 @@
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr v-for="product in filteredProducts" :key="product.id">
-            <td class="px-6 py-4"><div class="flex items-center space-x-4"><div class="avatar"><div class="w-12 h-12 rounded-lg shadow-sm"><img :src="product.photo_url || '/finako.svg'" alt="Foto Produk" class="object-cover" /></div></div><div><div class="font-semibold text-gray-800">{{ product.name }}</div><div class="text-xs text-gray-500">{{ product.has_variants ? 'Punya Varian' : 'Produk Tunggal' }}</div></div></div></td>
+            <td class="px-6 py-4"><div class="flex items-center space-x-4"><div class="avatar"><div class="w-12 h-12 rounded-lg shadow-sm"><img :src="product.photo_url || '/finako.jpg'" alt="Foto Produk" class="object-cover" /></div></div><div><div class="font-semibold text-gray-800">{{ product.name }}</div><div class="text-xs text-gray-500">{{ product.has_variants ? 'Punya Varian' : 'Produk Tunggal' }}</div></div></div></td>
             <td class="px-6 py-4 text-gray-600">{{ product.categoryName }}</td>
             <td class="px-6 py-4"><button v-if="product.has_variants" class="text-teal-600 hover:underline font-medium" @click="openViewVariantsModal(product)">Lihat Varian</button><span v-else class="font-semibold text-gray-800">{{ formatCurrency(product.price) }}</span></td>
             <td class="px-6 py-4 font-semibold text-gray-800">{{ product.stock }}</td>

@@ -15,12 +15,12 @@ const allMenus = [
     { name: 'Dasbor', route: '/', icon: HomeIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'kasir', 'manager', 'staff'] },
     { name: 'Kasir (POS)', route: '/transaksi', icon: ShoppingCartIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'kasir', 'manager', 'staff'] },
     { name: 'Produk', route: '/produk', icon: ArchiveBoxIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
-    { name: 'Stok', route: '/stok', icon: CubeIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
-    { name: 'Biaya', route: '/biaya', icon: BuildingStorefrontIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
-    { name: 'Kategori Biaya', route: '/kategori-biaya', icon: TagIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
-    { name: 'Pelanggan', route: '/pelanggan', icon: UserGroupIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
+    { name: 'Stok', route: '/stok', icon: CubeIcon, plans: ['enterprise'], roles: ['owner', 'admin', 'manager'] },
+   // { name: 'Biaya', route: '/biaya', icon: BuildingStorefrontIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
+    //{ name: 'Kategori Biaya', route: '/kategori-biaya', icon: TagIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
+   // { name: 'Pelanggan', route: '/pelanggan', icon: UserGroupIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin', 'manager'] },
     { name: 'Laporan', route: '/laporan', icon: ChartPieIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'admin'] },
-    { name: 'Pegawai', route: '/pegawai', icon: UsersIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin'] },
+   // { name: 'Pegawai', route: '/pegawai', icon: UsersIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin'] },
     { name: 'Absensi', route: '/absensi', icon: ClockIcon, plans: ['basic','pro', 'enterprise'], roles: ['owner', 'kasir', 'manager'] },
     { name: 'Pengaturan', route: '/pengaturan', icon: Cog6ToothIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner'] }
 ];

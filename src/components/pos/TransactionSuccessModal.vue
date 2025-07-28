@@ -187,7 +187,7 @@ async function handleSendWhatsApp() {
     }
     
     const fullHtmlContent = getFullHtml(receiptHtmlBody);
-    const apiUrl = `https://dark-buses-cheer.loca.lt/generate-receipt`;
+    const apiUrl = `/api/generate-receipt`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',

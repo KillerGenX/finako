@@ -5,7 +5,7 @@ const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
 
 // === Konfigurasi & Inisialisasi ===
-dotenv.config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
