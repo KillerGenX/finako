@@ -77,7 +77,7 @@
           </div>
           <div class="p-4 bg-teal-50 border border-teal-200 rounded-lg">
             <h3 class="font-semibold text-gray-800">Instruksi:</h3>
-            <p class="text-sm text-teal-800 mt-1">Silakan transfer ke rekening BCA <strong class="font-bold">1234567890</strong> a.n. <strong>PT Finako Digital</strong>. Langganan akan aktif setelah pembayaran diverifikasi oleh admin.</p>
+            <p class="text-sm text-teal-800 mt-1">Silakan transfer ke rekening Mandiri <strong class="font-bold">1080018162033</strong> a.n. <strong>Teguh Prasetyo</strong>. Konfirmasi pembayaran anda ke WA Admin <strong>0821-331-331-20</strong>. Langganan akan aktif setelah pembayaran diverifikasi oleh admin.</p>
           </div>
         </div>
 

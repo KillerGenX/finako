@@ -82,7 +82,7 @@
               </div>
               <div class="ml-3 text-sm">
                 <label for="agreeTerms" class="font-medium text-gray-700">Saya setuju dengan 
-                  <a href="#" class="text-teal-600 hover:text-teal-700">syarat & ketentuan</a>
+                  <a href="https://www.finako.app/syarat-ketentuan" class="text-teal-600 hover:text-teal-700">syarat & ketentuan</a>
                 </label>
               </div>
             </div>
