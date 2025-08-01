@@ -32,6 +32,13 @@ export const useAttendanceStore = defineStore('attendance', () => {
 
   // Cek status absensi terakhir dari pegawai yang login
   async function fetchMyLastStatus() {
+    // Guard: jangan fetch jika user belum login atau sudah logout
+    if (!userStore.userId) {
+      loading.value = false;
+      lastAttendance.value = null;
+      return;
+    }
+    
     loading.value = true;
     lastAttendance.value = null; // Reset dulu untuk state yang bersih
     try {

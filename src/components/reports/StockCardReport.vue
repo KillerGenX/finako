@@ -1,5 +1,5 @@
 <template>
-    <div class="space-y-6">
+    <div class="space-y-4 sm:space-y-6">
       <!-- Header dan tombol ekspor (HANYA GAYA YANG DIUBAH) -->
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <h3 class="text-xl font-bold text-gray-800">Laporan Kartu Stok</h3>
@@ -22,7 +22,7 @@
             <div class="relative w-full cursor-default overflow-hidden rounded-md bg-white text-left border border-gray-300 shadow-sm focus-within:ring-1 focus-within:ring-teal-500">
               <ComboboxInput
                 class="input w-full pl-3 pr-10 border-none"
-                :displayValue="(item) => item?.o_name"
+                :displayValue="(item) => item?.name"
                 @change="query = $event.target.value"
                 placeholder="Ketik untuk mencari item..."
               />
@@ -34,11 +34,11 @@
               <ComboboxOptions class="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
                 <div v-if="isItemListLoading" class="px-4 py-2 text-center text-gray-500">Memuat...</div>
                 <div v-if="filteredItems.length === 0 && !isItemListLoading" class="px-4 py-2 text-center text-gray-500">Tidak ditemukan.</div>
-                <ComboboxOption v-for="item in filteredItems" :key="item.o_id" :value="item" v-slot="{ active }">
+                <ComboboxOption v-for="item in filteredItems" :key="item.id" :value="item" v-slot="{ active }">
                   <li :class="['cursor-pointer select-none p-2', { 'bg-teal-600 text-white': active, 'text-gray-900': !active }]">
                     <div class="flex justify-between">
-                      <span>{{ item.o_name }}</span>
-                      <span :class="['badge badge-sm', active ? 'badge-ghost' : '']">{{ item.o_type }}</span>
+                      <span>{{ item.name }}</span>
+                      <span :class="['badge badge-sm', active ? 'badge-ghost' : '']">{{ item.type }}</span>
                     </div>
                   </li>
                 </ComboboxOption>
@@ -122,6 +122,7 @@ import {
 const props = defineProps({
     startDate: { type: [String, Date], required: true },
     endDate: { type: [String, Date], required: true },
+    outletId: { type: String, default: null },  // Tambah prop outlet filter
 });
   
 const reportStore = useReportStore();
@@ -167,16 +168,16 @@ const filteredItems = computed(() =>
     query.value === ''
       ? allItems.value
       : allItems.value.filter((item) =>
-          item.o_name.toLowerCase().replace(/\s+/g, '').includes(query.value.toLowerCase().replace(/\s+/g, ''))
+          item.name.toLowerCase().replace(/\s+/g, '').includes(query.value.toLowerCase().replace(/\s+/g, ''))
         )
 );
   
 async function fetchAllItems() {
     isItemListLoading.value = true;
     try {
-      const { data, error } = await supabase.rpc('get_all_inventoriable_items');
-      if (error) throw error;
-      allItems.value = data || [];
+      // Gunakan store yang sudah ada
+      await reportStore.fetchInventoriableItems();
+      allItems.value = reportStore.inventoriableItems.data || [];
     } catch(e) { console.error("Gagal mengambil daftar item:", e); } 
     finally { isItemListLoading.value = false; }
 }
@@ -185,34 +186,53 @@ onMounted(() => {
     fetchAllItems();
 });
   
-watch([selectedItem, () => props.startDate, () => props.endDate], async () => {
+watch([selectedItem, () => props.startDate, () => props.endDate, () => props.outletId], async () => {
     reportStore.stockCardReport.data = [];
     if (selectedItem.value) {
-        const activeOutletId = userStore.activeOutletId;
-        if (!activeOutletId) {
-            alert("Silakan pilih outlet aktif terlebih dahulu di Dasbor.");
+        // GUNAKAN outletId dari props (dari LaporanView), fallback ke activeOutletId
+        const targetOutletId = props.outletId || userStore.activeOutletId;
+        
+        if (!targetOutletId) {
+            alert("Silakan pilih outlet aktif terlebih dahulu di Pengaturan → Outlet.");
             return;
         }
 
         reportStore.stockCardReport.loading = true;
         let initialStock = 0;
+        
         try {
-            const { data: currentStock, error } = await supabase.rpc('get_current_stock', {
-                p_item_type: selectedItem.value.o_type,
-                p_item_id: selectedItem.value.o_id,
-                p_outlet_id: activeOutletId
+            // PERBAIKAN: Gunakan stok pada AWAL periode (lebih akurat)
+            const { data: stockAtDate, error } = await supabase.rpc('get_stock_at_date', {
+                p_item_type: selectedItem.value.type,
+                p_item_id: selectedItem.value.id,
+                p_outlet_id: targetOutletId,
+                p_date: props.startDate  // Stok di AWAL periode, bukan stok saat ini
             });
-            if (error) throw error;
-            initialStock = currentStock;
+            if (error) {
+                console.warn("get_stock_at_date gagal, fallback ke current stock:", error);
+                // Fallback ke current stock jika RPC baru belum ada
+                const { data: currentStock, error: currentError } = await supabase.rpc('get_current_stock', {
+                    p_item_type: selectedItem.value.type,
+                    p_item_id: selectedItem.value.id,
+                    p_outlet_id: targetOutletId
+                });
+                if (currentError) throw currentError;
+                initialStock = currentStock || 0;
+            } else {
+                initialStock = stockAtDate || 0;
+            }
+            
         } catch (e) {
-            console.error("Gagal mengambil stok terkini:", e);
+            console.error("Gagal mengambil stok awal periode:", e);
         }
 
+        // Panggil RPC dengan outlet filter
         await reportStore.fetchStockCardReport({
             startDate: props.startDate,
             endDate: props.endDate,
-            itemType: selectedItem.value.o_type,
-            itemId: selectedItem.value.o_id,
+            itemType: selectedItem.value.type,
+            itemId: selectedItem.value.id,
+            outletId: targetOutletId,  // TAMBAH OUTLET ID
             initialStock: initialStock
         });
     }
@@ -227,11 +247,11 @@ const handleExport = () => {
     if (isExporting.value || !selectedItem.value || !reportData.value || reportData.value.length === 0) return;
     isExporting.value = true;
     try {
-        const title = `Kartu Stok: ${selectedItem.value.o_name}`;
+        const title = `Kartu Stok: ${selectedItem.value.name}`;
         const startDateStr = new Date(props.startDate).toLocaleDateString('id-ID');
         const endDateStr = new Date(props.endDate).toLocaleDateString('id-ID');
         const dateRangeStr = `Periode: ${startDateStr} - ${endDateStr}`;
-        const fileName = `kartu-stok-${selectedItem.value.o_name.replace(/ /g, "_")}.xlsx`;
+        const fileName = `kartu-stok-${selectedItem.value.name.replace(/ /g, "_")}.xlsx`;
         const { awal, akhir } = stockSummary.value;
         const transactionHeaders = ["Tanggal & Waktu", "Tipe Mutasi", "Masuk", "Keluar", "Saldo Akhir", "Keterangan"];
         const transactionRows = reportData.value.map(item => [

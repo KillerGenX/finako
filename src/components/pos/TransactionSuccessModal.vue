@@ -1,51 +1,84 @@
 <template>
   <dialog class="modal" :class="{ 'modal-open': show }">
-    <div class="modal-box">
-      <div class="text-center p-4">
-        <div class="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
-          <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+    <div class="modal-box w-full max-w-md mx-4 md:max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+      
+      <!-- Success content dengan mobile-first design -->
+      <div class="flex-grow overflow-y-auto text-center py-4 px-4">
+        
+        <!-- Large success icon -->
+        <div class="mx-auto w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mb-4 shadow-lg">
+          <svg class="w-12 h-12 md:w-14 md:h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+          </svg>
         </div>
-        <h3 class="font-bold text-2xl text-gray-800">Transaksi Berhasil!</h3>
-        <p class="py-2 text-gray-500">ID Transaksi: <span class="font-mono">{{ transactionId }}</span></p>
+        
+        <!-- Success message -->
+        <h3 class="font-bold text-xl md:text-2xl text-gray-800 mb-2">Transaksi Berhasil!</h3>
+        <p class="text-gray-600 mb-4">Pembayaran telah diproses dengan sukses</p>
+        
+        <!-- Transaction ID dengan card style -->
+        <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4">
+          <p class="text-xs text-gray-500 mb-1">ID Transaksi</p>
+          <p class="font-mono text-sm md:text-base font-semibold text-gray-800">{{ transactionId }}</p>
+        </div>
       </div>
       
-      <!-- Tombol Aksi dengan Hierarki yang Jelas -->
-      <div class="modal-action flex-col space-y-3 px-4 pb-4">
-        <!-- Aksi Utama -->
-        <button @click="emit('newTransaction')" class="btn btn-primary bg-teal-600 hover:bg-teal-700 border-none text-white w-full btn-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <!-- Mobile-friendly action buttons dengan fixed positioning -->
+      <div class="flex-shrink-0 p-4 space-y-3 border-t border-gray-100 bg-white">
+        
+        <!-- Primary action - prominent button -->
+        <button 
+          @click="emit('newTransaction')" 
+          class="btn btn-primary bg-teal-600 hover:bg-teal-700 border-none text-white w-full btn-lg touch-target shadow-md"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          Mulai Transaksi Baru
+          Transaksi Baru
         </button>
-        <!-- Aksi Sekunder -->
-        <div class="grid grid-cols-2 gap-3 w-full">
-            <button @click="handlePrint" class="btn btn-outline w-full">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                Cetak Struk
-            </button>
-            <button 
-                @click="handleSendWhatsApp" 
-                class="btn btn-outline btn-success" 
-                :class="{ 'loading': isGeneratingPdf }" 
-                :disabled="isGeneratingPdf || !customerPhone"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                Kirim via WA
-            </button>
+        
+        <!-- Secondary actions - always 2 columns untuk mobile -->
+        <div class="grid grid-cols-2 gap-3">
+          <button 
+            @click="handlePrint" 
+            class="btn btn-outline hover:bg-gray-50 w-full touch-target text-sm"
+          >
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+            </svg>
+            Cetak Struk
+          </button>
+          
+          <button 
+            @click="handleSendWhatsApp" 
+            class="btn btn-outline btn-success hover:bg-green-50 w-full touch-target text-sm" 
+            :class="{ 'loading': isGeneratingPdf }" 
+            :disabled="isGeneratingPdf || !customerPhone"
+          >
+            <svg v-if="!isGeneratingPdf" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+            {{ isGeneratingPdf ? 'Kirim...' : 'Kirim WA' }}
+          </button>
+        </div>
+        
+        <!-- WhatsApp status info untuk mobile - more compact -->
+        <div v-if="!customerPhone" class="text-center pt-2">
+          <p class="text-xs text-gray-500">
+            💡 Masukkan nomor pelanggan saat checkout untuk kirim via WA
+          </p>
         </div>
       </div>
 
-      <div v-if="pdfError" role="alert" class="alert alert-error text-sm mt-4 mx-4">
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2 2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      <!-- Error message dengan mobile-friendly design -->
+      <div v-if="pdfError" class="alert alert-error text-sm mx-4 mb-4 rounded-xl">
+        <svg class="stroke-current shrink-0 h-4 w-4" fill="none" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2 2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
         <span>{{ pdfError }}</span>
       </div>
       
-      <!-- Struk untuk dicetak tetap tersembunyi, tidak ada perubahan di sini -->
+      <!-- Struk untuk dicetak tetap tersembunyi -->
       <div class="absolute -left-[9999px]">
         <div ref="printableReceipt">
             <ThermalReceipt 
@@ -226,3 +259,79 @@ Terima kasih!`;
   }
 }
 </script>
+
+<style scoped>
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Success modal animation */
+.modal-box {
+  animation: successSlideUp 0.4s ease-out;
+}
+
+@keyframes successSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Success icon bounce animation */
+.modal-box svg {
+  animation: successBounce 0.6s ease-out 0.2s both;
+}
+
+@keyframes successBounce {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Mobile optimization untuk better visibility */
+@media (max-width: 768px) {
+  .btn:active {
+    transform: scale(0.98);
+  }
+  
+  /* Pastikan modal tidak terlalu tinggi pada mobile */
+  .modal-box {
+    max-height: 90vh !important;
+  }
+  
+  /* Scroll behavior yang smooth */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Compact spacing untuk mobile */
+  .space-y-3 > * + * {
+    margin-top: 12px !important;
+  }
+}
+
+/* Ensure buttons are fully visible */
+.btn {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Grid columns responsive fix */
+.grid-cols-2 {
+  grid-template-columns: 1fr 1fr;
+}
+</style>

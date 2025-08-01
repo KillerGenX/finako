@@ -7,13 +7,32 @@ import { useRouter } from 'vue-router';
 export const useUIStore = defineStore('ui', () => {
   const isSidebarCollapsed = ref(true);
   const notification = ref({ message: '', type: 'info', key: 0 });
-  function toggleSidebar() { isSidebarCollapsed.value = !isSidebarCollapsed.value; }
+  
+  function toggleSidebar() { 
+    isSidebarCollapsed.value = !isSidebarCollapsed.value; 
+  }
+  
+  function setSidebarCollapsed(collapsed) {
+    isSidebarCollapsed.value = collapsed;
+  }
+  
   function showNotification(message, type = 'success', duration = 3000) {
     notification.value = { message, type, key: Date.now() };
     const currentKey = notification.value.key;
-    setTimeout(() => { if (notification.value.key === currentKey) { notification.value = { message: '', type: 'info', key: 0 }; } }, duration);
+    setTimeout(() => { 
+      if (notification.value.key === currentKey) { 
+        notification.value = { message: '', type: 'info', key: 0 }; 
+      } 
+    }, duration);
   }
-  return { isSidebarCollapsed, notification, toggleSidebar, showNotification };
+  
+  return { 
+    isSidebarCollapsed, 
+    notification, 
+    toggleSidebar, 
+    setSidebarCollapsed,
+    showNotification 
+  };
 });
 
 

@@ -30,12 +30,32 @@ function hideTooltip() {
     emit('hide-tooltip');
   }
 }
+
+// Safe mobile check function
+function isMobileView() {
+  return typeof window !== 'undefined' && window.innerWidth < 768;
+}
 </script>
 
 <template>
+  <!-- Mobile Overlay Background -->
+  <div 
+    v-if="!isSidebarCollapsed" 
+    class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+    @click="uiStore.toggleSidebar"
+  ></div>
+
   <aside 
-    class="bg-white text-gray-700 flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out border-r border-gray-200"
-    :class="isSidebarCollapsed ? 'w-20' : 'w-64'"
+    class="bg-white text-gray-700 flex flex-col h-screen transition-all duration-300 ease-in-out border-r border-gray-200 z-50"
+    :class="[
+      // Desktop behavior (unchanged)
+      'md:sticky md:top-0',
+      isSidebarCollapsed ? 'md:w-20' : 'md:w-64',
+      // Mobile behavior (new)
+      'fixed md:relative top-0 left-0',
+      'w-64 md:w-auto',
+      isSidebarCollapsed ? '-translate-x-full md:translate-x-0' : 'translate-x-0'
+    ]"
   >
     <!-- Area Logo dengan Separator -->
     <div class="h-16 flex items-center justify-center p-4 border-b border-gray-200">
@@ -53,7 +73,8 @@ function hideTooltip() {
             :to="menu.route" 
             @mouseenter="showTooltip($event, menu.name)" 
             @mouseleave="hideTooltip" 
-            class="flex items-center"
+            @click="isMobileView() ? uiStore.toggleSidebar() : null"
+            class="flex items-center touch-target"
           >
             <component :is="menu.icon" class="h-6 w-6 shrink-0" />
             <span v-if="!isSidebarCollapsed" class="ml-3">{{ menu.name }}</span>

@@ -22,7 +22,7 @@ const allMenus = [
     { name: 'Laporan', route: '/laporan', icon: ChartPieIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner', 'admin'] },
    // { name: 'Pegawai', route: '/pegawai', icon: UsersIcon, plans: ['pro', 'enterprise'], roles: ['owner', 'admin'] },
     { name: 'Absensi', route: '/absensi', icon: ClockIcon, plans: ['basic','pro', 'enterprise'], roles: ['owner', 'kasir', 'manager'] },
-    { name: 'Pengaturan', route: '/pengaturan', icon: Cog6ToothIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner'] }
+    { name: 'Pengaturan', route: '/pengaturan', icon: Cog6ToothIcon, plans: ['basic', 'pro', 'enterprise'], roles: ['owner','kasir'] }
 ];
 
 // Composable baru kita sekarang tidak butuh parameter.

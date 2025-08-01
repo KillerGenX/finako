@@ -29,6 +29,13 @@ export const useReportStore = defineStore('report', () => {
     error: null,
   });
 
+  // State untuk inventoriable items (produk, varian, bahan baku)
+  const inventoriableItems = ref({
+    data: [],
+    loading: false,
+    error: null,
+  });
+
 
   // State untuk laporan lain di masa depan
   // const salesReport = ref({ ... });
@@ -133,12 +140,12 @@ export const useReportStore = defineStore('report', () => {
           p_end_date: new Date(filters.endDate).toISOString(),
           p_item_type: filters.itemType,
           p_item_id: filters.itemId,
-          p_initial_stock: filters.initialStock // Kirim stok awal ke RPC
+          p_outlet_id: filters.outletId,  // TAMBAH OUTLET ID PARAMETER
+          p_initial_stock: filters.initialStock
       });
       
       if (error) throw error;
       
-      // Tidak perlu proses apa-apa lagi! Langsung simpan.
       stockCardReport.value.data = data || [];
   
     } catch (e) {
@@ -149,13 +156,35 @@ export const useReportStore = defineStore('report', () => {
     }
   }
 
+  // Function untuk mengambil semua item yang bisa di-inventori (produk, varian, bahan baku)
+  async function fetchInventoriableItems() {
+    inventoriableItems.value.loading = true;
+    inventoriableItems.value.error = null;
+    
+    try {
+      const { data, error } = await supabase.rpc('get_all_inventoriable_items');
+      
+      if (error) throw error;
+      
+      inventoriableItems.value.data = data || [];
+      
+    } catch (e) {
+      inventoriableItems.value.error = e.message;
+      console.error("Gagal mengambil daftar inventoriable items:", e);
+    } finally {
+      inventoriableItems.value.loading = false;
+    }
+  }
+
 
   return {
     attendanceReport,
     salesReport,
     stockCardReport,
+    inventoriableItems,
     fetchAttendanceReport,
     fetchSalesReport,
     fetchStockCardReport,
+    fetchInventoriableItems,
   };
 });

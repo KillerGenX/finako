@@ -1,11 +1,11 @@
 <template>
-    <div class="space-y-8">
-      <!-- Header Panel Laporan -->
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <h3 class="text-xl font-bold text-gray-800">Laporan Penjualan</h3>
+    <div class="space-y-6 sm:space-y-8">
+      <!-- Header Panel Laporan - Mobile Optimized -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+        <h3 class="text-lg sm:text-xl font-bold text-gray-800">Laporan Penjualan</h3>
         <button 
           @click="handleExport" 
-          class="btn btn-outline border-gray-300 btn-sm"
+          class="btn btn-outline border-gray-300 btn-sm w-full sm:w-auto"
           :disabled="isLoading || (!summary && topProducts.length === 0)"
         >
           <span v-if="isExporting" class="loading loading-spinner loading-xs"></span>
@@ -28,94 +28,183 @@
       <!-- Konten Utama Laporan Penjualan -->
       <div v-else-if="summary" class="space-y-8">
         
-        <!-- Kartu KPI dengan Gaya Baru -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div class="bg-white shadow-lg rounded-lg border-l-4 border-teal-500 flex items-center p-5">
-                <div class="bg-teal-100 rounded-full p-3 mr-4"><svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01"></path></svg></div>
-                <div><p class="text-sm text-gray-500 font-medium">Omzet Kotor</p><p class="text-2xl font-bold text-gray-800">{{ formatCurrency(summary.total_revenue) }}</p></div>
+        <!-- Kartu KPI Mobile Optimized -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+            <div class="bg-white shadow-lg rounded-lg border-l-4 border-teal-500 flex items-center p-3 sm:p-4">
+                <div class="bg-teal-100 rounded-full p-2 sm:p-3 mr-3 flex-shrink-0">
+                  <svg class="w-5 h-5 sm:w-6 sm:h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01"></path></svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs sm:text-sm text-gray-500 font-medium truncate">Omzet Kotor</p>
+                  <p class="text-lg sm:text-xl xl:text-2xl font-bold text-gray-800 truncate">{{ formatCurrency(summary.total_revenue) }}</p>
+                </div>
             </div>
-            <div class="bg-white shadow-lg rounded-lg border-l-4 border-green-500 flex items-center p-5">
-                <div class="bg-green-100 rounded-full p-3 mr-4"><svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg></div>
-                <div><p class="text-sm text-gray-500 font-medium">Laba Kotor</p><p class="text-2xl font-bold text-gray-800">{{ formatCurrency(summary.total_profit) }}</p></div>
+            <div class="bg-white shadow-lg rounded-lg border-l-4 border-green-500 flex items-center p-3 sm:p-4">
+                <div class="bg-green-100 rounded-full p-2 sm:p-3 mr-3 flex-shrink-0">
+                  <svg class="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs sm:text-sm text-gray-500 font-medium truncate">Laba Kotor</p>
+                  <p class="text-lg sm:text-xl xl:text-2xl font-bold text-gray-800 truncate">{{ formatCurrency(summary.total_profit) }}</p>
+                </div>
             </div>
-            <div class="bg-white shadow-lg rounded-lg border-l-4 border-blue-500 flex items-center p-5">
-                <div class="bg-blue-100 rounded-full p-3 mr-4"><svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg></div>
-                <div><p class="text-sm text-gray-500 font-medium">Jml. Transaksi</p><p class="text-2xl font-bold text-gray-800">{{ summary.transaction_count }}</p></div>
+            <div class="bg-white shadow-lg rounded-lg border-l-4 border-blue-500 flex items-center p-3 sm:p-4">
+                <div class="bg-blue-100 rounded-full p-2 sm:p-3 mr-3 flex-shrink-0">
+                  <svg class="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs sm:text-sm text-gray-500 font-medium truncate">Jml. Transaksi</p>
+                  <p class="text-lg sm:text-xl xl:text-2xl font-bold text-gray-800">{{ summary.transaction_count }}</p>
+                </div>
             </div>
-            <div class="bg-white shadow-lg rounded-lg border-l-4 border-purple-500 flex items-center p-5">
-                <div class="bg-purple-100 rounded-full p-3 mr-4"><svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
-                <div><p class="text-sm text-gray-500 font-medium">Produk Terjual</p><p class="text-2xl font-bold text-gray-800">{{ summary.total_items_sold }} pcs</p></div>
+            <div class="bg-white shadow-lg rounded-lg border-l-4 border-purple-500 flex items-center p-3 sm:p-4">
+                <div class="bg-purple-100 rounded-full p-2 sm:p-3 mr-3 flex-shrink-0">
+                  <svg class="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs sm:text-sm text-gray-500 font-medium truncate">Produk Terjual</p>
+                  <p class="text-lg sm:text-xl xl:text-2xl font-bold text-gray-800">{{ summary.total_items_sold }} pcs</p>
+                </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Kolom Kiri: Produk Terlaris -->
-            <div class="lg:col-span-1 space-y-4">
-                <div>
-                  <h4 class="text-lg font-bold text-gray-800 mb-4">Produk Terlaris</h4>
-                  <div class="overflow-x-auto bg-white rounded-lg border">
-                    <table class="table-auto w-full text-sm">
-                      <thead class="bg-gray-50 text-left text-gray-600">
-                        <tr>
-                          <th class="px-4 py-2 font-medium">Produk</th>
-                          <th class="px-4 py-2 font-medium text-right">Terjual</th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y">
-                        <tr v-if="!topProducts || topProducts.length === 0"><td colspan="2" class="p-4 text-center text-gray-500">Tidak ada data.</td></tr>
-                        <tr v-for="product in topProducts.slice(0, 10)" :key="product.product_id">
-                          <td class="px-4 py-2 font-medium text-gray-800">{{ product.product_name }}</td>
-                          <td class="px-4 py-2 text-right font-mono">{{ product.quantity_sold }}</td>
-                        </tr>
-                      </tbody>
-                    </table>
+        <!-- Layout Mobile Optimized: Chart & Top Products -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
+            <!-- Produk Terlaris - Mobile First -->
+            <div class="xl:col-span-1 order-2 xl:order-1">
+                <h4 class="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">Produk Terlaris</h4>
+                
+                <!-- Mobile: Card Layout -->
+                <div class="block sm:hidden space-y-2">
+                  <div v-if="!topProducts || topProducts.length === 0" class="bg-gray-50 rounded-lg p-4 text-center text-gray-500">
+                    Tidak ada data produk
+                  </div>
+                  <div v-for="(product, index) in topProducts.slice(0, 5)" :key="product.product_id" 
+                       class="bg-white rounded-lg border p-3 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                      <div class="bg-teal-100 text-teal-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                        {{ index + 1 }}
+                      </div>
+                      <span class="font-medium text-gray-800 text-sm truncate">{{ product.product_name }}</span>
+                    </div>
+                    <span class="font-mono text-sm font-bold text-gray-600">{{ product.quantity_sold }}</span>
                   </div>
                 </div>
+                
+                <!-- Desktop: Table Layout -->
+                <div class="hidden sm:block overflow-x-auto bg-white rounded-lg border">
+                  <table class="table-auto w-full text-sm">
+                    <thead class="bg-gray-50 text-left text-gray-600">
+                      <tr>
+                        <th class="px-3 sm:px-4 py-2 font-medium">Produk</th>
+                        <th class="px-3 sm:px-4 py-2 font-medium text-right">Terjual</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                      <tr v-if="!topProducts || topProducts.length === 0">
+                        <td colspan="2" class="p-4 text-center text-gray-500">Tidak ada data.</td>
+                      </tr>
+                      <tr v-for="product in topProducts.slice(0, 10)" :key="product.product_id">
+                        <td class="px-3 sm:px-4 py-2 font-medium text-gray-800">{{ product.product_name }}</td>
+                        <td class="px-3 sm:px-4 py-2 text-right font-mono">{{ product.quantity_sold }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
             </div>
-            <!-- Kolom Kanan: Grafik -->
-            <div class="lg:col-span-2">
-                <h4 class="text-lg font-bold text-gray-800 mb-4">Grafik Tren Penjualan</h4>
-                <div class="p-4 bg-white rounded-lg border h-80">
-                    <SalesChart v-if="!isLoading && chartData.labels.length > 0" :chart-data="chartData" :chart-options="chartOptions" />
-                    <div v-else class="flex items-center justify-center h-full text-gray-400">Data tidak cukup untuk menampilkan grafik.</div>
+            
+            <!-- Grafik - Mobile Responsive -->
+            <div class="xl:col-span-2 order-1 xl:order-2">
+                <h4 class="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">Grafik Tren Penjualan</h4>
+                <div class="p-3 sm:p-4 bg-white rounded-lg border">
+                    <div class="h-64 sm:h-72 md:h-80">
+                        <SalesChart v-if="!isLoading && chartData.labels.length > 0" :chart-data="chartData" :chart-options="chartOptions" />
+                        <div v-else class="flex items-center justify-center h-full text-gray-400 text-sm sm:text-base">
+                          Data tidak cukup untuk menampilkan grafik.
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <!-- Daftar Transaksi -->
+        <!-- Daftar Transaksi - Mobile Optimized -->
         <div>
-            <h4 class="text-lg font-bold text-gray-800 mb-4">Daftar Transaksi</h4>
-            <div class="overflow-x-auto bg-white rounded-lg border">
+            <h4 class="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">Daftar Transaksi</h4>
+            
+            <!-- Mobile: Card Layout -->
+            <div class="block lg:hidden space-y-3">
+              <div v-if="!transactionList || transactionList.length === 0" class="bg-gray-50 rounded-lg p-6 text-center text-gray-500">
+                Tidak ada transaksi dalam periode ini
+              </div>
+              <div v-for="tx in paginatedTransactions" :key="tx.id" 
+                   class="bg-white rounded-lg border p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="text-xs text-gray-500">
+                    {{ new Date(tx.created_at).toLocaleString('id-ID', {day: '2-digit', month: 'short', hour:'2-digit', minute:'2-digit'}) }}
+                  </div>
+                  <div class="text-right">
+                    <div class="text-lg font-bold text-gray-900 font-mono">{{ formatCurrency(tx.final_amount) }}</div>
+                  </div>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="text-sm font-medium text-gray-800">{{ tx.outlet_name }}</div>
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 mt-1">
+                      {{ tx.payment_method }}
+                    </span>
+                  </div>
+                  <button class="btn btn-xs btn-outline border-gray-300 flex-shrink-0" @click="showReceipt(tx)">
+                    Lihat Struk
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Desktop: Table Layout -->
+            <div class="hidden lg:block overflow-x-auto bg-white rounded-lg border">
               <table class="table-auto w-full text-sm">
                 <thead class="bg-gray-50 text-left text-gray-600">
                   <tr>
-                    <th class="px-6 py-3 font-medium">Waktu</th>
-                    <th class="px-6 py-3 font-medium">Outlet</th>
-                    <th class="px-6 py-3 font-medium">Total</th>
-                    <th class="px-6 py-3 font-medium">Metode Bayar</th>
-                    <th class="px-6 py-3 font-medium text-center">Aksi</th>
+                    <th class="px-4 sm:px-6 py-3 font-medium">Waktu</th>
+                    <th class="px-4 sm:px-6 py-3 font-medium">Outlet</th>
+                    <th class="px-4 sm:px-6 py-3 font-medium">Total</th>
+                    <th class="px-4 sm:px-6 py-3 font-medium">Metode Bayar</th>
+                    <th class="px-4 sm:px-6 py-3 font-medium text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y">
-                  <tr v-if="!transactionList || transactionList.length === 0"><td colspan="5" class="p-10 text-center text-gray-500">Tidak ada transaksi.</td></tr>
+                  <tr v-if="!transactionList || transactionList.length === 0">
+                    <td colspan="5" class="p-10 text-center text-gray-500">Tidak ada transaksi.</td>
+                  </tr>
                   <tr v-for="tx in paginatedTransactions" :key="tx.id">
-                    <td class="px-6 py-4">{{ new Date(tx.created_at).toLocaleString('id-ID', {day: '2-digit', month: 'short', hour:'2-digit', minute:'2-digit'}) }}</td>
-                    <td class="px-6 py-4">{{ tx.outlet_name }}</td>
-                    <td class="px-6 py-4 font-mono">{{ formatCurrency(tx.final_amount) }}</td>
-                    <td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{{ tx.payment_method }}</span></td>
-                    <td class="px-6 py-4 text-center">
+                    <td class="px-4 sm:px-6 py-4">{{ new Date(tx.created_at).toLocaleString('id-ID', {day: '2-digit', month: 'short', hour:'2-digit', minute:'2-digit'}) }}</td>
+                    <td class="px-4 sm:px-6 py-4">{{ tx.outlet_name }}</td>
+                    <td class="px-4 sm:px-6 py-4 font-mono">{{ formatCurrency(tx.final_amount) }}</td>
+                    <td class="px-4 sm:px-6 py-4">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {{ tx.payment_method }}
+                      </span>
+                    </td>
+                    <td class="px-4 sm:px-6 py-4 text-center">
                       <button class="btn btn-xs btn-outline border-gray-300" @click="showReceipt(tx)">Lihat Struk</button>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <!-- Paginasi dengan Gaya Baru -->
+            
+            <!-- Paginasi Mobile Optimized -->
             <div class="flex justify-center mt-4" v-if="totalPages > 1">
                 <div class="flex items-center gap-2">
-                  <button class="btn btn-outline border-gray-300" @click="currentPage--" :disabled="currentPage === 1">«</button>
-                  <span class="font-medium">Halaman {{ currentPage }} dari {{ totalPages }}</span>
-                  <button class="btn btn-outline border-gray-300" @click="currentPage++" :disabled="currentPage === totalPages">»</button>
+                  <button class="btn btn-sm btn-outline border-gray-300" @click="currentPage--" :disabled="currentPage === 1">
+                    <span class="hidden sm:inline">« Prev</span>
+                    <span class="sm:hidden">«</span>
+                  </button>
+                  <span class="font-medium text-sm px-2">{{ currentPage }}/{{ totalPages }}</span>
+                  <button class="btn btn-sm btn-outline border-gray-300" @click="currentPage++" :disabled="currentPage === totalPages">
+                    <span class="hidden sm:inline">Next »</span>
+                    <span class="sm:hidden">»</span>
+                  </button>
                 </div>
             </div>
         </div>
@@ -155,7 +244,7 @@ const props = defineProps({
 });
 
 const reportStore = useReportStore();
-const { exportToStyledExcel } = useExporter();
+const { exportSalesReportExcel } = useExporter();
 const isExporting = ref(false);
 
 const isLoading = computed(() => reportStore.salesReport.loading);
@@ -235,29 +324,18 @@ const handleExport = () => {
     const dateRangeStr = `Periode: ${startDateStr} - ${endDateStr}`;
     const fileName = `laporan-penjualan-${new Date(props.dateRange[0]).toISOString().split('T')[0]}_sd_${new Date(props.dateRange[1]).toISOString().split('T')[0]}.xlsx`;
 
-    const dataToExport = {
-      summary: [
-        { Keterangan: "OMZET KOTOR", Jumlah: summary.value.total_revenue || 0 },
-        { Keterangan: "LABA KOTOR", Jumlah: summary.value.total_profit !== undefined ? summary.value.total_profit : "N/A" },
-        { Keterangan: "PRODUK TERJUAL (PCS)", Jumlah: summary.value.total_items_sold || 0 },
-        { Keterangan: "JUMLAH TRANSAKSI", Jumlah: summary.value.transaction_count || 0 },
-      ],
-      topProducts: topProducts.value.map(p => ({
-        "Nama Produk": p.product_name,
-        "Jumlah Terjual": p.quantity_sold,
-        "Total Omzet": p.total_revenue,
-      })),
-      transactions: transactionList.value.map(tx => ({
-        "Tanggal": new Date(tx.created_at).toLocaleString('id-ID', { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
-        "ID Transaksi": tx.id.slice(-8).toUpperCase(),
-        "Outlet": tx.outlet_name || '-',
-        "Kasir": tx.cashier_name || '-',
-        "Metode Bayar": tx.payment_method,
-        "Total (Rp)": tx.final_amount,
-      })),
+    // Format data untuk ekspor sales report khusus
+    const salesData = {
+      summary: summary.value,
+      topProducts: topProducts.value,
+      transactions: transactionList.value
     };
-    exportToStyledExcel(dataToExport, reportTitle, dateRangeStr, fileName);
-  } catch(e) { console.error("Gagal ekspor:", e); }
+
+    exportSalesReportExcel(salesData, reportTitle, dateRangeStr, fileName);
+  } catch(e) { 
+    console.error("Gagal ekspor:", e);
+    alert("Gagal mengekspor data. Silakan coba lagi.");
+  }
   finally { isExporting.value = false; }
 };
 
