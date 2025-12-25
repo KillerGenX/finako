@@ -237,8 +237,10 @@ async function handleSendWhatsApp() {
     const pdfUrl = result.url;
     if (!pdfUrl) throw new Error('Server tidak memberikan URL PDF.');
     
-    // Format tanggal dan waktu transaksi
-    const transactionDate = new Date(props.transaction.created_at);
+    // Format tanggal dan waktu transaksi (gunakan data dari fullTransactionData atau waktu sekarang)
+    const transactionDate = fullTransactionData.value?.created_at 
+      ? new Date(fullTransactionData.value.created_at) 
+      : new Date();
     const formattedDate = transactionDate.toLocaleDateString('id-ID', { 
       day: 'numeric', 
       month: 'long', 
@@ -250,11 +252,12 @@ async function handleSendWhatsApp() {
     });
     
     // Format total transaksi
+    const total = fullTransactionData.value?.total_amount || props.paymentDetails?.total || 0;
     const formattedTotal = new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       minimumFractionDigits: 0
-    }).format(props.total);
+    }).format(total);
     
     const greeting = props.customerName ? `Halo ${props.customerName}` : 'Halo';
     const message = `${greeting} 👋
