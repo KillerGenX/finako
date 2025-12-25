@@ -260,20 +260,23 @@ async function handleSendWhatsApp() {
     }).format(total);
     
     const greeting = props.customerName ? `Halo ${props.customerName}` : 'Halo';
-    const message = `${greeting} ✋
+    const message = `${greeting},
 
-Terima kasih telah berbelanja di *${userStore.business?.name}*! 
+Terima kasih telah berbelanja di *${userStore.business?.name}*!
 
-📝 *DETAIL TRANSAKSI*
-📆 Tanggal: ${formattedDate}
-⏰ Waktu: ${formattedTime}
-💵 Total: ${formattedTotal}
+============================
+*DETAIL TRANSAKSI*
+============================
+Tanggal  : ${formattedDate}
+Waktu    : ${formattedTime}
+Total    : ${formattedTotal}
 
-📄 Struk Digital:
+Struk Digital:
 ${pdfUrl}
 
-Kami sangat menghargai kepercayaan Anda. Ditunggu kunjungan berikutnya! 😊
+Kami sangat menghargai kepercayaan Anda. Ditunggu kunjungan berikutnya!
 
+---
 _Pesan otomatis dari Finako POS_`;
     let waUrl = `https://wa.me/`;
     if (props.customerPhone) {
