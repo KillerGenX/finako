@@ -277,7 +277,7 @@ ${pdfUrl}
 Kami sangat menghargai kepercayaan Anda. Ditunggu kunjungan berikutnya!
 
 ---
-_Pesan otomatis dari Finako POS_`;
+_Pesan otomatis dari Finako POS, Kunjungi https://finako.app_`;
     let waUrl = `https://wa.me/`;
     if (props.customerPhone) {
       const formattedPhone = props.customerPhone.replace(/[^0-9]/g, '').replace(/^0/, '62');
