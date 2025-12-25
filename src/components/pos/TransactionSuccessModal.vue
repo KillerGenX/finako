@@ -236,12 +236,42 @@ async function handleSendWhatsApp() {
     
     const pdfUrl = result.url;
     if (!pdfUrl) throw new Error('Server tidak memberikan URL PDF.');
-    const greeting = props.customerName ? `Halo ${props.customerName},` : 'Halo,';
-    const message = `${greeting} berikut adalah struk untuk transaksi Anda di ${userStore.business?.name}:
+    
+    // Format tanggal dan waktu transaksi
+    const transactionDate = new Date(props.transaction.created_at);
+    const formattedDate = transactionDate.toLocaleDateString('id-ID', { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    });
+    const formattedTime = transactionDate.toLocaleTimeString('id-ID', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    
+    // Format total transaksi
+    const formattedTotal = new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(props.total);
+    
+    const greeting = props.customerName ? `Halo ${props.customerName}` : 'Halo';
+    const message = `${greeting} 👋
 
+Terima kasih telah berbelanja di *${userStore.business?.name}*!
+
+📋 *Detail Transaksi*
+📅 Tanggal: ${formattedDate}
+🕐 Waktu: ${formattedTime}
+💰 Total: ${formattedTotal}
+
+🧾 Struk Digital:
 ${pdfUrl}
 
-Terima kasih!`;
+Kami sangat menghargai kepercayaan Anda. Ditunggu kunjungan berikutnya! 🙏
+
+_Pesan otomatis dari Finako POS_`;
     let waUrl = `https://wa.me/`;
     if (props.customerPhone) {
       const formattedPhone = props.customerPhone.replace(/[^0-9]/g, '').replace(/^0/, '62');
